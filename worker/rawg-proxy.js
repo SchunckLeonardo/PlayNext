@@ -3,7 +3,7 @@ const PARAMS = new Set(['page', 'page_size', 'platforms', 'genres', 'ordering', 
 const MAX_BODY_BYTES = 8192;
 const json = (body, status = 200) => Response.json(body, { status, headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
 
-export async function handleRawgProxy(request, upstreamFetch = globalThis.fetch) {
+export async function handleRawgProxy(request, upstreamFetch = (...args) => globalThis.fetch(...args)) {
   if (request.method !== 'POST') return json({ error: 'Use POST para consultar a RAWG.' }, 405);
   const origin = request.headers.get('Origin');
   if (origin && origin !== new URL(request.url).origin) return json({ error: 'Origem não permitida.' }, 403);
@@ -44,6 +44,8 @@ export async function handleRawgProxy(request, upstreamFetch = globalThis.fetch)
     const body = JSON.stringify(data, (_field, value) => typeof value === 'string' ? value.replaceAll(key, '[redacted]') : value);
     return new Response(body, { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
   } catch (error) {
-    return json({ error: error?.name === 'TimeoutError' ? 'A RAWG demorou para responder.' : 'Não foi possível acessar a RAWG neste momento.' }, error?.name === 'TimeoutError' ? 504 : 502);
+    const message = String(error?.message || '');
+    const code = /Illegal invocation/i.test(message) ? 'RAWG_FETCH_CONTEXT' : /AbortSignal|not a function/i.test(message) ? 'RAWG_RUNTIME_COMPATIBILITY' : /not allowed|blocked|policy|permission/i.test(message) ? 'RAWG_UPSTREAM_POLICY' : 'RAWG_UPSTREAM_CONNECTION';
+    return json({ error: error?.name === 'TimeoutError' ? 'A RAWG demorou para responder.' : 'Não foi possível acessar a RAWG neste momento.', code }, error?.name === 'TimeoutError' ? 504 : 502);
   }
 }

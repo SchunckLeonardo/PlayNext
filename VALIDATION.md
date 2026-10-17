@@ -2,7 +2,7 @@
 
 ## Automatizada
 
-`npm test`: 33 testes com Node, sem dependências nem credenciais reais. Cobertura de filtros combinados, identidades da demonstração, todas as plataformas pedidas, prevenção de repetição, movimentação entre listas, serialização do histórico, dados malformados, sorteio de página, fallback, cancelamento e mensagens dos códigos HTTP 401/403/429/500.
+`npm test`: 34 testes com Node, sem dependências nem credenciais reais. Cobertura de filtros combinados, identidades da demonstração, todas as plataformas pedidas, prevenção de repetição, movimentação entre listas, serialização do histórico, dados malformados, sorteio de página, fallback, cancelamento e mensagens dos códigos HTTP 401/403/429/500.
 
 `npm run check`: validação de sintaxe dos módulos executáveis.
 

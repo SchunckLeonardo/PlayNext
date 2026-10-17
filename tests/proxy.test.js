@@ -7,6 +7,14 @@ const origin = 'https://playnext.example';
 const key = 'test-only-credential';
 const req = (body = { path: 'genres', key }, options = {}) => new Request(origin + '/api/rawg', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: origin }, body: JSON.stringify(body), ...options });
 
+test('the Worker default fetch also retains the native global receiver', async context => {
+  context.mock.method(globalThis, 'fetch', function () {
+    if (this !== globalThis) throw new TypeError('Illegal invocation');
+    return Promise.resolve(Response.json({ results: [] }));
+  });
+  assert.equal((await handleRawgProxy(req())).status, 200);
+});
+
 test('proxy reads real upstream JSON even without CORS headers, preserves pagination and never echoes the key', async () => {
   let target;
   const response = await handleRawgProxy(req({ key, path: 'games', params: { platforms: '4,187', page: 2 } }), async (url, options) => {
