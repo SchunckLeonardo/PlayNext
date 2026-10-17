@@ -32,7 +32,7 @@ export async function handleRawgProxy(request, upstreamFetch = (...args) => glob
   const target = new URL(input.path, 'https://api.rawg.io/api/');
   target.search = new URLSearchParams({ ...params, key });
   try {
-    const upstream = await upstreamFetch(target.href, { headers: { Accept: 'application/json' }, cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(15000) });
+    const upstream = await upstreamFetch(target.href, { headers: { Accept: 'application/json', 'Cache-Control': 'no-store' }, redirect: 'error', signal: AbortSignal.timeout(15000) });
     if (!upstream.ok) {
       const status = [400, 401, 403, 404, 429].includes(upstream.status) ? upstream.status : 502;
       return json({ error: status === 401 || status === 403 ? 'A RAWG não aceitou esta chave.' : status === 429 ? 'Limite da RAWG atingido.' : 'A RAWG não conseguiu concluir a consulta.' }, status);

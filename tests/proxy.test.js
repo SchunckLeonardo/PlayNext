@@ -15,12 +15,21 @@ test('the Worker default fetch also retains the native global receiver', async c
   assert.equal((await handleRawgProxy(req())).status, 200);
 });
 
+test('proxy works on Workers that do not implement the Request cache option', async () => {
+  const response = await handleRawgProxy(req(), async (_url, options) => {
+    if ('cache' in options) throw new Error("The 'cache' field on 'RequestInitializerDict' is not implemented.");
+    assert.equal(options.headers['Cache-Control'], 'no-store');
+    return Response.json({ results: [] });
+  });
+  assert.equal(response.status, 200);
+});
+
 test('proxy reads real upstream JSON even without CORS headers, preserves pagination and never echoes the key', async () => {
   let target;
   const response = await handleRawgProxy(req({ key, path: 'games', params: { platforms: '4,187', page: 2 } }), async (url, options) => {
     target = new URL(url);
-    assert.deepEqual(options.headers, { Accept: 'application/json' });
-    assert.equal(options.cache, 'no-store');
+    assert.deepEqual(options.headers, { Accept: 'application/json', 'Cache-Control': 'no-store' });
+    assert.equal(options.cache, undefined);
     assert.equal(options.redirect, 'error');
     return Response.json({ count: 80, next: `https://api.rawg.io/api/games?page=3&key=${key}`, previous: `https://api.rawg.io/api/games?page=1&key=${key}`, results: [{ id: 1, name: 'A game' }] });
   });
