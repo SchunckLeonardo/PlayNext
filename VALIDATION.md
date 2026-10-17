@@ -2,7 +2,7 @@
 
 ## Automatizada
 
-`npm test`: 21 testes com Node, sem dependências nem credenciais reais. Cobertura de filtros combinados, identidades da demonstração, todas as plataformas pedidas, prevenção de repetição, movimentação entre listas, serialização do histórico, dados malformados, sorteio de página, fallback, cancelamento e mensagens dos códigos HTTP 401/403/429/500.
+`npm test`: 33 testes com Node, sem dependências nem credenciais reais. Cobertura de filtros combinados, identidades da demonstração, todas as plataformas pedidas, prevenção de repetição, movimentação entre listas, serialização do histórico, dados malformados, sorteio de página, fallback, cancelamento e mensagens dos códigos HTTP 401/403/429/500.
 
 `npm run check`: validação de sintaxe dos módulos executáveis.
 
@@ -26,6 +26,15 @@ Verificado na prévia HTTP local:
 - Movimento reduzido é tratado em CSS e JavaScript; sua preferência no sistema não foi alterada durante o teste.
 - Capas e fontes são recursos externos; indisponibilidade da imagem mantém o card e os controles utilizáveis.
 - Coleção e filtros pertencem ao navegador; a chave é específica da sessão. Não há sincronização entre dispositivos.
-- Hospedagem Sites inicia com acesso privado. O projeto estático pode ser publicado em qualquer hospedagem estática.
+- Hospedagem Sites mantém o acesso privado. A versão corrigida executa um Worker ESM para a interface e a rota `/api/rawg`.
 
 Artefatos de teste do navegador não são incluídos no código ou na versão publicada.
+
+## Correção da conexão RAWG
+
+- Causa reproduzida no navegador: `Failed to execute 'fetch' on 'Window': Illegal invocation`. A função nativa era armazenada e chamada como método do cliente, perdendo o contexto de Window. Um teste que simula essa exigência falhou antes da correção e passou depois; o padrão foi substituído por uma função que chama `globalThis.fetch` com seu contexto correto.
+- Detectado também que a RAWG responde HTTP 401 a uma chave fictícia sem cabeçalhos CORS. A rota do próprio site permite receber a resposta original, com erros específicos, mesmo nessas condições.
+- No navegador local, a mesma chave fictícia passou de erro genérico para “A RAWG não aceitou esta chave”. Uma consulta HTTP à rota também retornou 401 com JSON legível e `Cache-Control: no-store`.
+- Testes integram o cliente à rota, com respostas sem CORS, cobrindo conexão, plataformas, gêneros, sorteio e detalhes; testam também destinos e parâmetros bloqueados, limites de tamanho, falhas e segredo fora das respostas. Os testes usam fixtures identificadas, sem credenciais de terceiros.
+- A migração preserva todos os oito assets originais. Um teste compara os conteúdos servidos pelo Worker com as fontes e garante entrega sem cache antigo.
+- A chave real do usuário não foi lida nem usada durante o diagnóstico. O sucesso com ela ainda depende de repetir a conexão no site corrigido.

@@ -1,26 +1,30 @@
 import { normalizeGame, shuffle, unseenGames } from './model.js';
 
-const BASE = 'https://api.rawg.io/api/';
 export class RawgError extends Error {
   constructor(message, status = 0) { super(message); this.status = status; }
 }
 export class RawgClient {
-  constructor(key, request = globalThis.fetch, random = Math.random) {
+  constructor(key, request = (...args) => globalThis.fetch(...args), random = Math.random) {
     this.key = key.trim(); this.request = request; this.random = random;
   }
   async get(path, params = {}, signal) {
-    const url = new URL(path, BASE);
-    url.search = new URLSearchParams({ ...params, key: this.key });
     let response;
     try {
-      response = await this.request(url.href, { signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(18000)]) : AbortSignal.timeout(18000), referrerPolicy: 'no-referrer' });
+      response = await this.request('/api/rawg', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path, params, key: this.key }),
+        cache: 'no-store', credentials: 'same-origin',
+        signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(20000)]) : AbortSignal.timeout(20000),
+        referrerPolicy: 'no-referrer',
+      });
     } catch (error) {
       if (signal?.aborted) throw error;
-      throw new RawgError('Não foi possível acessar a RAWG. Confira sua chave de API e sua conexão e tente novamente.');
+      throw new RawgError('Não foi possível conectar ao PlayNext. Confira sua conexão e tente novamente.');
     }
     if (!response.ok) {
       if ([401, 403].includes(response.status)) throw new RawgError('A RAWG não aceitou esta chave. Confira sua API key e tente novamente.', response.status);
       if (response.status === 429) throw new RawgError('Limite de consultas da RAWG atingido. Aguarde um pouco e tente novamente.', 429);
+      if (response.status === 504) throw new RawgError('A RAWG demorou para responder. Tente novamente em instantes.', 504);
       throw new RawgError('A RAWG está indisponível no momento. Tente novamente em instantes.', response.status);
     }
     let data;

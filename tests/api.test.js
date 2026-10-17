@@ -1,24 +1,49 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { RawgClient } from '../dist/api.js';
+import { RawgClient } from '../public/api.js';
 
 const rawGame = id => ({ id, slug: `game-${id}`, name: `Game ${id}`, platforms: [{ platform: { slug: 'pc' } }], genres: [{ slug: 'action' }], background_image: 'https://media.rawg.io/example.jpg' });
+const requestURL = options => { const body = JSON.parse(options.body); const url = new URL(body.path, 'https://api.rawg.io/api/'); url.search = new URLSearchParams({ ...body.params, key: body.key }); return url; };
 const response = (body, status = 200) => ({ ok: status >= 200 && status < 300, status, json: async () => body });
 
-test('every request goes to the official RAWG origin with only the supplied key', async () => {
+test('default browser fetch keeps the Window receiver instead of binding the API client', async context => {
+  context.mock.method(globalThis, 'fetch', function () {
+    if (this !== globalThis) throw new TypeError("Failed to execute 'fetch' on 'Window': Illegal invocation");
+    return Promise.resolve(response({ results: [] }));
+  });
+  const api = new RawgClient('test-placeholder');
+  assert.deepEqual(await api.get('genres'), { results: [] });
+});
+
+test('a browser that blocks cross-origin RAWG responses still receives the actual authentication error', async () => {
+  const origin = 'https://playnext.example';
+  const browserFetch = async (url, options) => {
+    if (new URL(url, origin).origin !== origin) throw new TypeError('Failed to fetch: CORS');
+    assert.equal(options.method, 'POST');
+    assert.equal(new URL(url, origin).pathname, '/api/rawg');
+    return response({ error: 'The API key is not found' }, 401);
+  };
+  const api = new RawgClient('test-placeholder', browserFetch);
+  await assert.rejects(api.get('genres'), error => error.status === 401 && error.message.includes('não aceitou'));
+});
+
+test('browser sends key in a POST body to the same origin, never a URL', async () => {
   let called;
-  const api = new RawgClient(' test-key ', async (url, options) => { called = { url: new URL(url), options }; return response({ results: [] }); });
+  const api = new RawgClient(' test-key ', async (url, options) => { called = { url: new URL(url, 'https://playnext.example'), options }; return response({ results: [] }); });
   await api.get('games', { page: 2, genres: 'action' });
-  assert.equal(called.url.origin, 'https://api.rawg.io');
-  assert.equal(called.url.pathname, '/api/games');
-  assert.equal(called.url.searchParams.get('key'), 'test-key');
-  assert.equal(called.url.searchParams.get('page'), '2');
+  assert.equal(called.url.origin, 'https://playnext.example');
+  assert.equal(called.url.pathname, '/api/rawg');
+  assert.equal(called.url.search, '');
+  assert.equal(JSON.parse(called.options.body).key, 'test-key');
+  assert.equal(called.options.method, 'POST');
+  assert.equal(called.options.cache, 'no-store');
+  assert.equal(JSON.parse(called.options.body).params.page, 2);
   assert.equal(called.options.referrerPolicy, 'no-referrer');
 });
 test('connection discovers platforms and genres, follows catalog pagination safely', async () => {
   const urls = [];
-  const api = new RawgClient('test-key', async url => {
-    const parsed = new URL(url); urls.push(parsed);
+  const api = new RawgClient('test-key', async (url, options) => {
+    const parsed = requestURL(options); urls.push(parsed);
     if (parsed.pathname.endsWith('genres')) return response({ results: [{ id: 4, slug: 'action' }], next: null });
     return response({ results: [{ id: Number(parsed.searchParams.get('page')), slug: 'pc' }], next: parsed.searchParams.get('page') === '1' ? 'https://untrusted.example/?key=do-not-follow' : null });
   });
@@ -29,8 +54,8 @@ test('connection discovers platforms and genres, follows catalog pagination safe
 });
 test('sampling selects a random page and passes platform, genre and release-date filters', async () => {
   const calls = [];
-  const api = new RawgClient('test-key', async url => {
-    const parsed = new URL(url); calls.push(parsed);
+  const api = new RawgClient('test-key', async (url, options) => {
+    const parsed = requestURL(options); calls.push(parsed);
     return response({ count: 200, results: [rawGame(parsed.searchParams.get('page') === '4' ? 4 : 1)] });
   }, () => .6);
   const result = await api.sample({ platforms: [4, 187], genre: 'action' });
@@ -53,9 +78,9 @@ test('zero results and already classified selection return cleanly', async () =>
 });
 test('an unavailable random page falls back without an unbounded retry loop', async () => {
   let calls = 0;
-  const api = new RawgClient('test-key', async url => {
+  const api = new RawgClient('test-key', async (url, options) => {
     calls++;
-    return new URL(url).searchParams.has('page') ? response({}, 404) : response({ count: 8000, results: [rawGame(1)] });
+    return requestURL(options).searchParams.has('page') ? response({}, 404) : response({ count: 8000, results: [rawGame(1)] });
   }, () => .99);
   assert.equal((await api.sample({ platforms: [4] })).games[0].id, 1);
   assert.equal(calls, 2);

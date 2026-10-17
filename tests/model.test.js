@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { PLATFORMS, GENRES, HISTORY_KEY, FILTERS_KEY, shuffle, matchesFilters, unseenGames, decide, readHistory, readFilters, normalizeGame, safeImage } from '../dist/model.js';
-import { DEMO_GAMES } from '../dist/demo.js';
+import { PLATFORMS, GENRES, HISTORY_KEY, FILTERS_KEY, shuffle, matchesFilters, unseenGames, decide, readHistory, readFilters, normalizeGame, safeImage } from '../public/model.js';
+import { DEMO_GAMES } from '../public/demo.js';
 
 const game = { id: 1, slug: 'a-game', name: 'A game', platforms: ['pc', 'playstation5'], genres: ['action'] };
 const storage = value => ({ getItem: () => value });
