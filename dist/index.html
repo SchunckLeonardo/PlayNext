@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111210">
+  <meta name="description" content="Menos procurando, mais jogando. Descubra jogos aleatórios, deslize para escolher e encontre seu próximo favorito com a PlayNext.">
+  <meta name="referrer" content="no-referrer">
+  <title>PlayNext — seu próximo jogo está aqui</title>
+  <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Ir para o conteúdo</a>
+  <header class="topbar">
+    <a href="#discover" class="brand" aria-label="PlayNext, início"><span class="brand-symbol" data-icon="gamepad"></span><span>playnext<span class="brand-dot">.</span></span></a>
+    <nav aria-label="Navegação principal" class="main-nav">
+      <a href="#discover" class="nav-link active" data-nav="discover"><span data-icon="shuffle"></span> Descobrir</a>
+      <a href="#collection" class="nav-link" data-nav="collection"><span data-icon="collection"></span> Minha coleção <span class="nav-count" id="nav-count">0</span></a>
+    </nav>
+    <div class="header-actions"><span class="connection-status" id="connection-status"><i></i>Modo demonstração</span><button class="button button-key" data-action="api"><span data-icon="key"></span><span id="key-button-label">Conectar RAWG</span></button></div>
+  </header>
+
+  <main id="main" tabindex="-1">
+    <section id="discover-view" class="discover-layout" aria-label="Descobrir jogos">
+      <aside class="filters-panel" aria-label="Filtros de descoberta">
+        <div class="panel-heading"><h2><span data-icon="filters"></span> Do seu jeito</h2><button class="text-button" data-action="reset-filters">Limpar</button></div>
+        <p class="filter-intro">O acaso também tem preferências.</p>
+        <fieldset class="platform-fieldset"><legend>ONDE VOCÊ JOGA</legend><button id="all-platforms" class="platform-all selected" aria-pressed="true" data-action="all-platforms"><span data-icon="globe"></span> Todas as plataformas <span class="selection-dot"></span></button><div id="platform-options"></div></fieldset>
+        <div class="genre-filter"><label for="genre">QUAL É A VIBE?</label><div class="select-wrap"><select id="genre"><option value="">Todos os gêneros</option></select></div></div>
+        <div class="filter-footnote"><span data-icon="info"></span><span>Escolha uma ou mais plataformas.<br>Ou deixe o universo decidir.</span></div>
+        <div class="sidebar-bottom"><span class="tiny-star">✳</span><p>Sua próxima boa história<br>começa com um <em>play.</em></p><span class="mini-line"></span></div>
+      </aside>
+
+      <section class="discovery" aria-labelledby="discovery-title">
+        <div class="discovery-heading"><div><div class="eyebrow"><span class="orange-dash"></span> CHEGA DE OLHAR A BIBLIOTECA</div><h1 id="discovery-title">Menos procurando.<br>Mais <span>jogando.</span></h1><p>Um jogo de cada vez. Seu próximo favorito está aqui.</p></div><span class="heading-doodle" aria-hidden="true"><svg viewBox="0 0 90 90" fill="none"><path d="M18 20c35-12 48 4 38 22-7 13-20 10-17 1 4-13 37-4 30 23m-13-7 13 10 7-16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+        <div class="deck-toolbar"><span id="deck-summary"><span class="live-dot"></span> Seleção para explorar</span><button class="text-button shuffle-button" data-action="shuffle"><span data-icon="shuffle"></span> Embaralhar</button></div>
+        <div class="deck-stage" id="deck-stage"><div class="stack-layer layer-two"></div><div class="stack-layer layer-one"></div><div id="game-card" class="game-card" role="group" aria-label="Jogo sugerido"></div></div>
+        <div class="decision-controls" id="decision-controls"><div class="decision-wrap"><button class="decision decision-no" data-choice="no" aria-label="Sem interesse neste jogo"><span data-icon="x"></span></button><span>Sem interesse</span><kbd>←</kbd></div><div class="decision-wrap"><button class="decision decision-played" data-choice="played" aria-label="Já joguei este jogo"><span data-icon="check"></span></button><span>Já joguei</span><kbd>↓</kbd></div><div class="decision-wrap"><button class="decision decision-yes" data-choice="yes" aria-label="Quero jogar este jogo"><span data-icon="heart"></span></button><span>Vou jogar</span><kbd>→</kbd></div></div>
+        <div class="deck-bottom"><button class="undo-button" id="undo" data-action="undo" disabled><span data-icon="undo"></span> Desfazer última escolha</button><span class="swipe-hint">Deslize a capa para escolher <span>↔</span></span></div>
+        <div class="demo-banner" id="demo-banner"><span class="demo-icon" data-icon="gamepad"></span><p><strong>Experimentando por aqui?</strong><br>Esta é uma seleção de demonstração. Conecte sua chave para descobrir o catálogo da RAWG.</p><button class="text-button" data-action="api">Conectar <span data-icon="arrow"></span></button></div>
+      </section>
+
+      <aside class="activity-panel" aria-label="Sua atividade">
+        <div class="session-title"><span class="live-dot"></span> SUA JORNADA</div><h2>Boas escolhas.<br>Novas aventuras.</h2><p class="session-intro">Encontre o que combina com<br>o seu próximo tempo livre.</p>
+        <div class="stats-list"><button data-action="collection" data-status="yes"><span class="stat-icon green" data-icon="heart"></span><span>Vou jogar</span><strong id="count-yes">00</strong><span data-icon="chevron"></span></button><button data-action="collection" data-status="played"><span class="stat-icon blue" data-icon="check"></span><span>Já joguei</span><strong id="count-played">00</strong><span data-icon="chevron"></span></button><button data-action="collection" data-status="no"><span class="stat-icon red" data-icon="x"></span><span>Sem interesse</span><strong id="count-no">00</strong><span data-icon="chevron"></span></button></div>
+        <div class="recent-heading"><h3>Últimas escolhas</h3><span id="recent-count">0</span></div><div id="recent-list" class="recent-list"></div>
+        <div class="keyboard-note"><span data-icon="monitor"></span><div><strong>No teclado também vale.</strong><p>Use as setas ← ↓ → para escolher.<br><kbd>Z</kbd> desfaz a última escolha.</p></div></div>
+        <div class="local-note"><span data-icon="lock"></span><p>Suas escolhas ficam salvas<br>somente neste navegador.</p></div>
+      </aside>
+    </section>
+
+    <section id="collection-view" class="collection-view" hidden aria-labelledby="collection-title"><div class="collection-heading"><div><div class="eyebrow"><span class="orange-dash"></span> SEU UNIVERSO, SUAS ESCOLHAS</div><h1 id="collection-title">Minha coleção<span>.</span></h1><p>O próximo play, as boas memórias e o que ficou para depois.</p></div><a class="button primary-button" href="#discover"><span data-icon="shuffle"></span> Descobrir jogos</a></div><div class="collection-toolbar"><div class="collection-tabs" role="group" aria-label="Filtrar coleção"><button data-tab="all" aria-pressed="true">Todos <span id="tab-count-all">0</span></button><button data-tab="yes" aria-pressed="false">Vou jogar <span id="tab-count-yes">0</span></button><button data-tab="played" aria-pressed="false">Já joguei <span id="tab-count-played">0</span></button><button data-tab="no" aria-pressed="false">Sem interesse <span id="tab-count-no">0</span></button></div><label class="collection-search"><span class="sr-only">Buscar na coleção</span><span data-icon="search"></span><input id="collection-search" type="search" placeholder="Buscar um jogo…"></label></div><div id="collection-grid" class="collection-grid"></div><p class="collection-persistence"><span data-icon="lock"></span> Sua coleção é pessoal e fica salva neste navegador. Cada jogo aparece em uma única lista.</p></section>
+  </main>
+
+  <footer class="footer"><span>Menos indecisão. Mais diversão.</span><span>Feito para quem ama jogar <span class="footer-cross">✳</span></span><a href="https://rawg.io" target="_blank" rel="noopener noreferrer">Dados e imagens por <strong>RAWG</strong><span data-icon="external"></span></a></footer>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <span id="card-announcement" class="sr-only" aria-live="polite"></span>
+
+  <dialog id="api-dialog" class="modal api-modal"><form id="api-form"><div class="modal-top"><span class="modal-symbol" data-icon="key"></span><button type="button" class="icon-button" data-close="api-dialog" aria-label="Fechar configuração da API"><span data-icon="x"></span></button></div><div class="eyebrow">SUA CHAVE. SEU PRÓXIMO JOGO.</div><h2>Um universo para descobrir<span>.</span></h2><p>Conecte sua própria chave da RAWG para encontrar jogos nas suas plataformas favoritas.</p><label for="api-key">Sua chave de API RAWG</label><div class="key-input-wrap"><input id="api-key" name="api-key" type="password" placeholder="Cole sua API key aqui" required maxlength="256" autocomplete="off" spellcheck="false" aria-describedby="key-help api-error"><button type="button" class="icon-button" id="toggle-key" aria-label="Mostrar chave de API"><span data-icon="eye"></span></button></div><p class="input-help" id="key-help"><span data-icon="lock"></span>Usada diretamente com a RAWG e guardada só nesta sessão.</p><p class="form-error" id="api-error" role="alert" hidden></p><button class="button primary-button connect-button" type="submit" id="connect-button">Conectar e descobrir <span data-icon="arrow"></span></button><button type="button" class="disconnect-button text-button" id="disconnect" data-action="disconnect" hidden>Desconectar e usar demonstração</button><div class="get-key">Ainda não tem uma chave? <a href="https://rawg.io/apidocs" target="_blank" rel="noopener noreferrer">Obter na RAWG <span data-icon="external"></span></a></div></form></dialog>
+  <dialog id="details-dialog" class="modal details-modal"><div id="details-content"></div></dialog>
+  <noscript><p class="noscript">Ative o JavaScript para descobrir jogos e salvar suas escolhas.</p></noscript>
+</body>
+</html>

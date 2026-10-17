@@ -1,0 +1,11 @@
+{
+  "name": "playnext",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.mjs",
+    "test": "node --test tests/*.test.js",
+    "check": "node --check dist/app.js && node --check dist/api.js && node --check dist/model.js"
+  }
+}
