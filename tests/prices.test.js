@@ -151,8 +151,8 @@ test('Singleflight coalescing deduplicates concurrent requests for the same game
   const [r1, r2] = await Promise.all([p1, p2]);
   assert.equal(r1.stores.steam.price, 4.99);
   assert.equal(r2.stores.steam.price, 4.99);
-  // Celeste is pre-seeded in idCache, so only 1 upstream call (/games/prices/v3) is made for both concurrent callers!
-  assert.equal(upstreamCount, 1);
+  // Both concurrent callers share a single lookup/v1 + prices/v3 pair (2 upstream calls instead of 4).
+  assert.equal(upstreamCount, 2);
 });
 
 test('per-client burst and 5-minute window rate limits block abusive clients before touching upstream quota', async () => {

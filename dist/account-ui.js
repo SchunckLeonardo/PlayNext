@@ -1,16 +1,19 @@
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from './config.js';
-import { PrivateAccount, MEMORY_AUTH_OPTIONS, emptyState, cleanState, legacyChoices, removeLegacyChoices, accountMessage } from './account.js';
+import { PrivateAccount, persistentAuthOptions, emptyState, cleanState, legacyChoices, removeLegacyChoices, accountMessage, isAuthFailure } from './account.js';
+import { createSessionStorage } from './session-store.js';
 
 import { signInWithGoogle } from './oauth.js';
 
 const $ = s => document.querySelector(s);
 export function initAccountUI({ getState, replaceState, toast }) {
+  // access_token + refresh_token survive reloads, sealed with a non-extractable device key.
+  const sessionStore = createSessionStorage();
   const sdk = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-    auth: MEMORY_AUTH_OPTIONS,
+    auth: persistentAuthOptions(sessionStore),
     global: { headers: { 'X-Client-Info': 'playnext-web/2' } },
   });
   const account = new PrivateAccount(sdk);
-  let busy = false, restoring = false;
+  let busy = false, restoring = false, pendingRestore = null;
   let legacy = { history: [], filters: { platforms: [], genre: '' } };
   try { legacy = cleanState(legacyChoices(localStorage)); } catch {}
   let guestState = null;
@@ -41,22 +44,44 @@ export function initAccountUI({ getState, replaceState, toast }) {
     importStatus(); syncStatus();
     if (!$('#account-dialog').open) $('#account-dialog').showModal();
   }
-  async function hydrate(session) {
+  async function hydrate(session, { restored = false } = {}) {
     if (!session || restoring || account.user?.id === session.user.id) return;
     restoring = true;
     try {
       const prior = getState();
       const state = await account.open(session.user);
+      pendingRestore = false;
       guestState = prior.history.length ? { history: prior.history, filters: prior.filters } : null;
       await replaceState(state);
       $('#auth-panel').hidden = true; $('#profile-panel').hidden = false;
       $('#profile-email').textContent = session.user.email || 'Your account';
+      $('#auth-error').hidden = true;
       importStatus(); syncStatus();
-      toast('You’re signed in. Your collection is ready.', 'lock');
+      toast(restored ? 'Welcome back. Your session was restored on this device.' : 'You’re signed in. Your collection is ready.', 'lock');
     } catch (error) {
-      account.reset(); await sdk.auth.signOut({ scope: 'local' });
-      showError('#auth-error', error);
+      account.reset();
+      if (restored && !isAuthFailure(error)) {
+        // Keep the sealed session: retry on reconnect or when My Account is opened.
+        pendingRestore = true;
+        showError('#auth-error', 'Couldn’t reach your account. You’re still signed in on this device; we’ll retry when you’re back online.');
+      } else {
+        pendingRestore = false;
+        await sdk.auth.signOut({ scope: 'local' });
+        if (restored) await sessionStore.wipe();
+        showError('#auth-error', error);
+      }
     } finally { restoring = false; }
+  }
+  async function restore() {
+    if (account.user || restoring || busy) return;
+    const { data, error } = await sdk.auth.getSession();
+    if (error) {
+      pendingRestore = !isAuthFailure(error);
+      if (!pendingRestore) await sessionStore.wipe();
+      showError('#auth-error', pendingRestore ? 'Couldn’t reach your account. You’re still signed in on this device; we’ll retry when you’re back online.' : error);
+      return;
+    }
+    if (data.session) await hydrate(data.session, { restored: true });
   }
   async function save() {
     if (!account.user) { syncStatus(); return; }
@@ -71,7 +96,9 @@ export function initAccountUI({ getState, replaceState, toast }) {
     syncStatus();
   }
   async function clearSession() {
-    account.reset(); guestState = null;
+    account.reset(); guestState = null; pendingRestore = false;
+    // Removes the sealed tokens and the device key; the next sign-in creates a new key.
+    await sessionStore.wipe();
     await replaceState(emptyState());
     $('#profile-email').textContent = '';
     $('#delete-confirm').value = ''; $('#profile-error').hidden = true;
@@ -79,7 +106,7 @@ export function initAccountUI({ getState, replaceState, toast }) {
     syncStatus();
   }
   document.addEventListener('click', event => {
-    if (event.target.closest('[data-action="account"]')) open();
+    if (event.target.closest('[data-action="account"]')) { open(); if (pendingRestore) restore(); }
   });
   $('#google-sign-in').addEventListener('click', async () => {
     if (busy || restoring) return;
@@ -128,8 +155,10 @@ export function initAccountUI({ getState, replaceState, toast }) {
     if (busy) return; busy = true; $('#sign-out').disabled = true;
     try {
       await account.flush();
-      const {error}=await sdk.auth.signOut({scope:'local'}); if(error) throw error;
-      await clearSession(); $('#account-dialog').close(); toast('You signed out. This account’s data was cleared from memory.', 'lock');
+      // Even if the revoke request fails (offline), the sealed tokens are wiped from this device.
+      const {error}=await sdk.auth.signOut({scope:'local'});
+      await clearSession(); $('#account-dialog').close();
+      toast(error ? 'Signed out on this device. The server will end the session when you’re back online.' : 'You signed out. Your session was removed from this device.', 'lock');
     } catch(error) { showError('#profile-error', error); }
     finally { busy = false; syncStatus(); }
   });
@@ -138,7 +167,7 @@ export function initAccountUI({ getState, replaceState, toast }) {
     busy = true; $('#sign-out-discard').disabled = true;
     try {
       await account.tail;
-      const {error}=await sdk.auth.signOut({scope:'local'}); if(error) throw error;
+      await sdk.auth.signOut({scope:'local'});
       await clearSession(); $('#account-dialog').close(); toast('You signed out. Unsaved changes were discarded.', 'lock');
     } catch(error) { showError('#profile-error', error); }
     finally { busy = false; $('#sign-out-discard').disabled = false; syncStatus(); }
@@ -156,15 +185,16 @@ export function initAccountUI({ getState, replaceState, toast }) {
     finally { busy = false; $('#delete-account').disabled = false; syncStatus(); }
   });
   sdk.auth.onAuthStateChange((event, session) => {
+    // Never await SDK calls inside this callback; defer to avoid the auth lock deadlock.
     if (event === 'SIGNED_OUT' && account.user && !busy) setTimeout(clearSession,0);
+    // Another tab signed in: adopt the shared device session.
+    if (event === 'SIGNED_IN' && session && !account.user && !busy && !restoring) setTimeout(() => hydrate(session, { restored: true }), 0);
   });
+  window.addEventListener('online', () => { if (pendingRestore) restore(); });
   window.addEventListener('beforeunload', event => {
     if (account.pending || account.error) { event.preventDefault(); event.returnValue = ''; }
   });
-  sdk.auth.getSession().then(async ({data,error}) => {
-    if(error) { showError('#auth-error',error); return; }
-    if(data.session) await hydrate(data.session);
-  });
+  restore().catch(error => showError('#auth-error', error));
   syncStatus();
   return { save, open, get signedIn() { return !!account.user; } };
 }
