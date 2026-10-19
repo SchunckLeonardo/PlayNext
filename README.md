@@ -27,17 +27,17 @@ Para outra hospedagem estática, publique `dist/` e atualize as URLs permitidas 
 4. Na coleção, busque, mude a classificação ou remova jogos. Cada jogo tem apenas uma classificação e deixa de aparecer no baralho depois de escolhido.
 5. Entre para sincronizar sua coleção, filtros e chave criptografados entre dispositivos. Sem login, os dados ficam apenas na memória da aba. Ao recarregar, entre novamente; tokens não são persistidos no navegador.
 
-**Estado do envio de e-mails em 19/10/2026:** login de contas confirmadas e banco funcionando. Site URL e redirect exato configurados. O projeto ainda não tem SMTP próprio; cadastro e recuperação públicos aparecem como “em preparação”, sem submeter dados a um fluxo sem entrega. O código desses fluxos está implementado. Ative `PUBLIC_EMAIL_READY` em `dist/config.js` somente depois de configurar e verificar o envio real conforme `supabase/README.md`.
+O único método de entrada é **Google**. O PlayNext não cria senhas próprias nem depende de mensagens de confirmação/recuperação. O Supabase mantém a identidade Google e a sessão que autoriza o acesso aos dados privados. O login abre uma janela separada para preservar as escolhas de visitante na memória; permita essa janela no navegador.
 
 ## Segurança e dados
 
-- Supabase Auth gerencia e-mail, hash de senha, confirmação, recuperação e sessões. Não copiamos senhas ou e-mails para o estado da aplicação.
+- Google confirma a identidade; Supabase Auth gerencia a identidade vinculada, e-mail, perfil básico e sessões. O provedor de e-mail/senha está desabilitado. Não copiamos o perfil para o documento privado da aplicação.
 - Supabase Vault armazena **um documento criptografado por usuário**, com chave RAWG, coleção e filtros. A chave de criptografia é gerenciada pelo Supabase, fora do banco. Dados de Auth também dependem das proteções da infraestrutura do provedor.
 - RPCs vinculam cada operação a `auth.uid()`; não aceitam um identificador de proprietário fornecido pelo cliente. RLS protege os metadados; visitantes não têm acesso e usuários não podem ler o Vault diretamente.
 - Salvamentos serializados usam revisão otimista para impedir que outra aba sobrescreva escolhas recentes. Falhas ficam visíveis, com retentativa, exportação e saída com descarte explícito.
 - A chave RAWG descriptografada e os tokens ficam na memória. Não há novas gravações em `localStorage` ou `sessionStorage`. As chaves legadas conhecidas são removidas de ambos sem leitura. Escolhas antigas ficam disponíveis para **importação explícita**, sendo removidas do armazenamento antigo após o salvamento criptografado.
-- Exportação pessoal exclui chave RAWG, senha e tokens. Exclusão da conta remove Auth, sessões, metadados e o segredo correspondente do banco ativo. Backups e logs seguem a retenção dos provedores.
-- `dist/config.js` contém URL e **chave publicável** do Supabase; ela é pública por definição. Nunca coloque uma chave `service_role`, chave secreta Supabase ou credencial SMTP no frontend/repositório.
+- Exportação pessoal exclui chave RAWG, senha e tokens. A exclusão dos dados do PlayNext remove a identidade vinculada no Supabase Auth, sessões, metadados e o segredo correspondente do banco ativo. A conta Google é preservada. Backups e logs seguem a retenção dos provedores.
+- `dist/config.js` contém URL e **chave publicável** do Supabase; ela é pública por definição. Nunca coloque uma chave `service_role`, chave secreta Supabase ou segredo OAuth Google no frontend/repositório.
 - O serviço descriptografa os dados para uso; administradores autorizados podem acessá-los. Não é criptografia de ponta a ponta nem certificação de conformidade com a LGPD. O aviso de privacidade no site descreve finalidades, provedores, região EUA, retenção, exportação e exclusão. Governança jurídica e processos do controlador continuam necessários.
 
 ## RAWG
@@ -48,12 +48,12 @@ As consultas vão diretamente à API oficial por HTTPS, usando a chave do visita
 
 O transporte preserva o contexto nativo de `fetch`, corrigindo `Illegal invocation`. Respostas inválidas podem não ter CORS; nesses casos o navegador só permite uma mensagem genérica de chave/conexão. Sem uma chave RAWG válida fornecida pelo visitante no próprio formulário, não afirmamos ter validado uma consulta real autenticada.
 
-Fontes: [RAWG API](https://rawg.io/apidocs), [Vault](https://supabase.com/docs/guides/database/vault), [Auth](https://supabase.com/docs/guides/auth/passwords), [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [SMTP](https://supabase.com/docs/guides/auth/auth-smtp), [direitos dos titulares na ANPD](https://www.gov.br/anpd/pt-br/assuntos/titular-de-dados-1/direito-dos-titulares).
+Fontes: [RAWG API](https://rawg.io/apidocs), [Vault](https://supabase.com/docs/guides/database/vault), [Google Auth](https://supabase.com/docs/guides/auth/social-login/auth-google), [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [direitos dos titulares na ANPD](https://www.gov.br/anpd/pt-br/assuntos/titular-de-dados-1/direito-dos-titulares).
 
 ## Organização
 
 - `dist/app.js`, `model.js`, `api.js`: descoberta, escolhas e RAWG.
-- `dist/account.js`, `account-ui.js`, `config.js`: sincronização, Auth e conta.
+- `dist/account.js`, `account-ui.js`, `oauth.js`, `auth-callback.*`, `config.js`: sincronização, login Google e conta.
 - `dist/index.html`, `styles.css`, `account.css`: interface responsiva.
 - `dist/assets/tutorial/`: capturas públicas da RAWG e formulário vazio do PlayNext.
 - `supabase/migrations/`: esquema reproduzível, Vault, RLS e RPCs.

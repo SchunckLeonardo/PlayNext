@@ -35,12 +35,10 @@ export function cleanState(value) {
 export function accountMessage(error) {
   const code = error?.code;
   if (code === '40001' || error?.message?.includes('REVISION_CONFLICT')) return 'Sua conta mudou em outra aba. Exporte as escolhas desta aba e entre novamente para carregar a versão mais recente.';
-  if (code === 'invalid_credentials') return 'E-mail ou senha incorretos.';
-  if (code === 'email_not_confirmed') return 'Confirme seu e-mail pelo link enviado pelo Supabase antes de entrar.';
-  if (code === 'over_email_send_rate_limit') return 'Aguarde alguns minutos antes de solicitar outro e-mail.';
-  if (code === 'email_address_not_authorized') return 'O envio de e-mails do projeto ainda precisa ser configurado pelo responsável.';
-  if (code === 'weak_password') return 'Use uma senha com pelo menos 8 caracteres.';
-  if (code === 'user_already_exists') return 'Esta conta já existe. Tente entrar ou recuperar a senha.';
+  if (code === 'popup_blocked') return 'Permita a janela de login do Google neste site e tente novamente. Suas escolhas continuam nesta aba.';
+  if (code === 'oauth_cancelled') return 'A entrada com Google foi cancelada. Você pode tentar novamente quando quiser.';
+  if (code === 'oauth_timeout') return 'O login com Google demorou demais. Tente novamente.';
+  if (code === 'provider_disabled') return 'O login Google ainda não foi ativado neste projeto. Tente novamente em instantes.';
   if (code === '22023') return 'Sua coleção excedeu o limite de 5.000 jogos ou contém dados inválidos. Exporte seus dados antes de continuar.';
   return 'Não foi possível acessar sua conta. Confira a conexão e tente novamente.';
 }

@@ -7,22 +7,25 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import crypto from 'node:crypto';
 
-test('the actual bundled Auth SDK signs in/out without reading or writing persistent storage', async () => {
+test('the bundled Auth SDK builds Google OAuth and accepts sessions without persistent storage', async () => {
   const storageCalls=[];
   const storage={getItem(k){storageCalls.push(['get',k]);return null},setItem(k){storageCalls.push(['set',k])},removeItem(k){storageCalls.push(['remove',k])}};
   const context=vm.createContext({console,URL,Headers,Request,Response,AbortController,TextEncoder,TextDecoder,
     crypto:crypto.webcrypto,setTimeout,clearTimeout,setInterval,clearInterval,WebSocket:globalThis.WebSocket,
     fetch:async url=>{
       if(String(url).includes('/logout')) return new Response(null,{status:204});
-      assert.match(String(url),/\/auth\/v1\/token\?grant_type=password$/);
-      return new Response(JSON.stringify({access_token:'synthetic-access',refresh_token:'synthetic-refresh',token_type:'bearer',expires_in:3600,
-        user:{id:'00000000-0000-4000-8000-000000000001',aud:'authenticated',email:'test@example.invalid'}}),{status:200,headers:{'content-type':'application/json'}});
+      assert.match(String(url),/\/auth\/v1\/user$/);
+      return new Response(JSON.stringify({id:'00000000-0000-4000-8000-000000000001',aud:'authenticated',email:'test@example.invalid'}),{status:200,headers:{'content-type':'application/json'}});
     },
   });
   vm.runInContext(fs.readFileSync(new URL('../dist/vendor/supabase-2.118.0.js',import.meta.url),'utf8'),context);
   const sdk=context.supabase.createClient('https://example.supabase.co','sb_publishable_synthetic',{auth:{...MEMORY_AUTH_OPTIONS,storage}});
   try {
-    const result=await sdk.auth.signInWithPassword({email:'test@example.invalid',password:'synthetic-only'});
+    const oauth=await sdk.auth.signInWithOAuth({provider:'google',options:{redirectTo:'https://playnext.example/auth-callback.html',skipBrowserRedirect:true}});
+    assert.equal(new URL(oauth.data.url).searchParams.get('provider'),'google');
+    const part=value=>Buffer.from(JSON.stringify(value)).toString('base64url');
+    const token=part({alg:'HS256',typ:'JWT'})+'.'+part({exp:Math.floor(Date.now()/1000)+3600,sub:'00000000-0000-4000-8000-000000000001'})+'.'+Buffer.from('synthetic-signature').toString('base64url');
+    const result=await sdk.auth.setSession({access_token:token,refresh_token:'synthetic-refresh'});
     assert.equal(result.error,null);assert.equal((await sdk.auth.getSession()).data.session.user.email,'test@example.invalid');
     await sdk.auth.signOut({scope:'local'});assert.equal((await sdk.auth.getSession()).data.session,null);
     assert.deepEqual(storageCalls,[]);

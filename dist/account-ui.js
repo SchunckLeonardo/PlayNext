@@ -1,5 +1,7 @@
-import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, PUBLIC_EMAIL_READY } from './config.js';
+import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from './config.js';
 import { PrivateAccount, MEMORY_AUTH_OPTIONS, emptyState, cleanState, legacyChoices, removeLegacyChoices, accountMessage } from './account.js';
+
+import { signInWithGoogle } from './oauth.js';
 
 const $ = s => document.querySelector(s);
 export function initAccountUI({ getState, replaceState, toast }) {
@@ -8,7 +10,7 @@ export function initAccountUI({ getState, replaceState, toast }) {
     global: { headers: { 'X-Client-Info': 'playnext-web/2' } },
   });
   const account = new PrivateAccount(sdk);
-  let mode = 'login', busy = false, recovery = false, restoring = false;
+  let busy = false, restoring = false;
   let legacy = { history: [], filters: { platforms: [], genre: '' } };
   try { legacy = cleanState(legacyChoices(localStorage)); } catch {}
   let guestState = null;
@@ -32,28 +34,9 @@ export function initAccountUI({ getState, replaceState, toast }) {
     $('#legacy-visitor-note').hidden = !legacy.history.length;
     $('#import-description').textContent = `${count} escolhas anteriores disponíveis para importar. Sua chave de visitante não é importada; conecte-a novamente nesta conta.`;
   }
-  function authMode(next) {
-    mode = next;
-    const reset = next === 'reset', change = next === 'password';
-    $('#auth-email').disabled = change;
-    $('#password-field').hidden = reset;
-    $('#auth-password').required = !reset;
-    $('#auth-password').autocomplete = next === 'signup' || change ? 'new-password' : 'current-password';
-    $('#auth-password').minLength = next === 'login' ? 1 : 8;
-    $('#auth-password').value = '';
-    $('#auth-password').type = 'password';
-    $('#toggle-password').setAttribute('aria-label','Mostrar senha');
-    $('#auth-submit').textContent = reset ? 'Enviar recuperação por e-mail' : change ? 'Salvar nova senha' : next === 'signup' ? 'Criar minha conta' : 'Entrar e continuar';
-    $('#email-setup-note').hidden = PUBLIC_EMAIL_READY || (!reset && next !== 'signup');
-    $('#auth-submit').disabled = !PUBLIC_EMAIL_READY && (reset || next === 'signup');
-    $('#auth-help').textContent = reset ? 'Enviaremos um link para você abrir no navegador e escolher uma nova senha.' : next === 'signup' ? 'Use pelo menos 8 caracteres. Confirme o e-mail enviado pelo Supabase para ativar sua conta.' : change ? 'Escolha uma nova senha com pelo menos 8 caracteres.' : 'Sua sessão fica apenas nesta aba. Ao recarregar, entre novamente.';
-    $('#auth-error').hidden = true; $('#auth-success').hidden = true;
-    document.querySelectorAll('[data-auth-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.authMode === next)));
-    $('#auth-email').focus();
-  }
   function open() {
-    $('#auth-panel').hidden = !!account.user && !recovery;
-    $('#profile-panel').hidden = !account.user || recovery;
+    $('#auth-panel').hidden = !!account.user;
+    $('#profile-panel').hidden = !account.user;
     if (account.user) $('#profile-email').textContent = account.user.email || 'Sua conta';
     importStatus(); syncStatus();
     if (!$('#account-dialog').open) $('#account-dialog').showModal();
@@ -66,10 +49,8 @@ export function initAccountUI({ getState, replaceState, toast }) {
       const state = await account.open(session.user);
       guestState = prior.history.length ? { history: prior.history, filters: prior.filters } : null;
       await replaceState(state);
-      $('#auth-password').value = '';
       $('#auth-panel').hidden = true; $('#profile-panel').hidden = false;
       $('#profile-email').textContent = session.user.email || 'Sua conta';
-      $('#auth-email').value = session.user.email || '';
       importStatus(); syncStatus();
       toast('Você entrou. Sua coleção está pronta.', 'lock');
     } catch (error) {
@@ -90,48 +71,29 @@ export function initAccountUI({ getState, replaceState, toast }) {
     syncStatus();
   }
   async function clearSession() {
-    account.reset(); guestState = null; recovery = false;
+    account.reset(); guestState = null;
     await replaceState(emptyState());
-    $('#profile-email').textContent = ''; $('#auth-email').value = ''; $('#auth-password').value = '';
+    $('#profile-email').textContent = '';
     $('#delete-confirm').value = ''; $('#profile-error').hidden = true;
     $('#auth-panel').hidden = false; $('#profile-panel').hidden = true;
-    authMode('login'); syncStatus();
+    syncStatus();
   }
   document.addEventListener('click', event => {
-    const modeButton = event.target.closest('[data-auth-mode]');
-    if (modeButton && !busy) authMode(modeButton.dataset.authMode);
     if (event.target.closest('[data-action="account"]')) open();
   });
-  $('#auth-form').addEventListener('submit', async event => {
-    event.preventDefault(); if (busy || restoring || (!PUBLIC_EMAIL_READY && ['signup','reset'].includes(mode))) return;
-    busy = true; $('#auth-submit').disabled = true; $('#auth-error').hidden = true; $('#auth-success').hidden = true;
-    const email = $('#auth-email').value.trim(), password = $('#auth-password').value;
-    const redirectTo = location.origin + location.pathname;
-    try {
-      if (mode === 'login') {
-        const { data, error } = await sdk.auth.signInWithPassword({ email, password });
-        if (error) throw error; await hydrate(data.session);
-      } else if (mode === 'signup') {
-        const { data, error } = await sdk.auth.signUp({ email, password, options: { emailRedirectTo: redirectTo } });
-        if (error) throw error;
-        if (data.session) await hydrate(data.session);
-        else { $('#auth-success').textContent = 'Confira seu e-mail para confirmar o cadastro. Depois, volte aqui e entre com sua senha. Se já tem conta, use Entrar.'; $('#auth-success').hidden = false; }
-      } else if (mode === 'reset') {
-        const { error } = await sdk.auth.resetPasswordForEmail(email, { redirectTo });
-        if (error) throw error;
-        $('#auth-success').textContent = 'Se existir uma conta com este e-mail, você receberá as instruções de recuperação.'; $('#auth-success').hidden = false;
-      } else {
-        const { error } = await sdk.auth.updateUser({ password }); if (error) throw error;
-        recovery = false; open(); toast('Senha atualizada.', 'lock');
-      }
-    } catch(error) { showError('#auth-error', error); }
-    finally { $('#auth-password').value = ''; busy = false; $('#auth-submit').disabled = false; syncStatus(); }
+  $('#google-sign-in').addEventListener('click', async () => {
+    if (busy || restoring) return;
+    busy = true; $('#google-sign-in').disabled = true; $('#auth-error').hidden = true;
+    $('#google-status').textContent = 'Conclua a entrada na janela do Google.';
+    try { await hydrate(await signInWithGoogle(sdk)); }
+    catch(error) { showError('#auth-error', error); }
+    finally {
+      busy = false; $('#google-sign-in').disabled = false;
+      $('#google-status').textContent = 'Suas escolhas desta aba continuam aqui durante a entrada.';
+      syncStatus();
+    }
   });
-  $('#toggle-password').addEventListener('click', () => {
-    const input = $('#auth-password'); input.type = input.type === 'password' ? 'text' : 'password';
-    $('#toggle-password').setAttribute('aria-label', input.type === 'password' ? 'Mostrar senha' : 'Ocultar senha');
-  });
-  $('#account-dialog').addEventListener('close', () => { $('#auth-password').value = ''; $('#delete-confirm').value = ''; });
+  $('#account-dialog').addEventListener('close', () => { $('#delete-confirm').value = ''; });
   $('#retry-sync').addEventListener('click', async () => {
     $('#retry-sync').disabled = true;
     try { await account.retry(getState()); $('#profile-error').hidden = true; }
@@ -183,21 +145,17 @@ export function initAccountUI({ getState, replaceState, toast }) {
   });
   $('#delete-account').addEventListener('click', async () => {
     if (busy) return;
-    if ($('#delete-confirm').value !== 'EXCLUIR') { showError('#profile-error','Digite EXCLUIR para confirmar a exclusão da sua conta e dos seus dados.'); return; }
+    if ($('#delete-confirm').value !== 'EXCLUIR') { showError('#profile-error','Digite EXCLUIR para confirmar a exclusão dos seus dados do PlayNext.'); return; }
     busy = true; $('#delete-account').disabled = true;
     try {
       await account.tail;
       const {error}=await sdk.rpc('playnext_delete_account'); if(error) throw error;
       await sdk.auth.signOut({scope:'local'}); await clearSession(); $('#account-dialog').close();
-      toast('Conta e dados removidos do banco ativo.', 'trash');
+      toast('Dados do PlayNext removidos do banco ativo.', 'trash');
     } catch(error) { showError('#profile-error', error); }
     finally { busy = false; $('#delete-account').disabled = false; syncStatus(); }
   });
   sdk.auth.onAuthStateChange((event, session) => {
-    if (event === 'PASSWORD_RECOVERY') {
-      recovery = true;
-      setTimeout(async()=> { await hydrate(session); authMode('password'); open(); }, 0);
-    }
     if (event === 'SIGNED_OUT' && account.user && !busy) setTimeout(clearSession,0);
   });
   window.addEventListener('beforeunload', event => {
@@ -205,7 +163,7 @@ export function initAccountUI({ getState, replaceState, toast }) {
   });
   sdk.auth.getSession().then(async ({data,error}) => {
     if(error) { showError('#auth-error',error); return; }
-    if(data.session && !recovery) await hydrate(data.session);
+    if(data.session) await hydrate(data.session);
   });
   syncStatus();
   return { save, open, get signedIn() { return !!account.user; } };
