@@ -5,6 +5,7 @@ import { localStatus, fixture, publicClient, run, root } from './local.mjs';
 import { LOCAL_PROJECT } from '../local/config.mjs';
 import { DEMO_GAMES } from '../dist/demo.js';
 import { emptyState } from '../dist/account.js';
+import { computeBotProof, CLIENT_HEADER_NAME, CLIENT_HEADER_VALUE, PROOF_HEADER_NAME } from '../dist/prices.js';
 
 run('docker', ['compose', 'exec', '-T', 'app', 'npm', 'test'], { stdio: ['ignore', 'inherit', 'inherit'] });
 run('docker', ['exec', '-i', `supabase_db_${LOCAL_PROJECT}`, 'psql', '-U', 'postgres', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1'], {
@@ -33,11 +34,29 @@ try {
   const health = await (await fetch('http://127.0.0.1:4173/__local/health')).json();
   assert.equal(health.local, true);
   assert.equal(health.api, new URL(status.API_URL).origin);
+  assert.equal(health.prices?.secretName, 'ITAD_API_KEY');
+  const blockedBot = await fetch('http://127.0.0.1:4173/api/prices?title=Hades&slug=hades&country=US', {
+    headers: { 'User-Agent': 'curl/8.5.0' },
+  });
+  assert.equal(blockedBot.status, 403, 'Bot requests without client proof must be blocked.');
+  const validPriceRes = await fetch('http://127.0.0.1:4173/api/prices?title=Hades&slug=hades&country=US', {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 Chrome/125.0.0.0 Safari/537.36',
+      [CLIENT_HEADER_NAME]: CLIENT_HEADER_VALUE,
+      [PROOF_HEADER_NAME]: computeBotProof('Hades', 'US', Math.floor(Date.now() / 60000)),
+    },
+  });
+  assert.equal(validPriceRes.status, 200);
+  assert.equal(validPriceRes.headers.get('x-ratelimit-window'), '300');
+  const pricePayload = await validPriceRes.json();
+  assert.equal(pricePayload.found, true);
+  assert.ok(pricePayload.stores?.steam && pricePayload.stores?.gog && pricePayload.stores?.epic);
   const html = await (await fetch('http://127.0.0.1:4173/')).text();
   assert.ok(html.includes('LOCAL ENVIRONMENT') && html.includes('Sign in with local test account'));
-  console.log('PASS: registered local Auth user, three encrypted choices, revision conflict, logout/login restore, anonymous denial and local-only frontend configuration.');
+  console.log('PASS: registered local Auth user, three encrypted choices, revision conflict, logout/login restore, anonymous denial, ITAD price endpoint + bot protection, and local-only frontend configuration.');
 } finally {
   const restored = await client.rpc('playnext_save', { p_state: original, p_revision: revision });
   assert.equal(restored.error, null, 'Restore the fixture state after the smoke test.');
   await client.auth.signOut();
 }
+

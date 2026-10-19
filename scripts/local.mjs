@@ -39,10 +39,16 @@ async function prepareAccount(status) {
   const client = publicClient(status);
   const login = await client.auth.signInWithPassword(user);
   if (login.error || !login.data.session) throw new Error('Local test identity could not sign in.');
+  const probe = await client.rpc('playnext_load');
+  if (probe.error) {
+    run('docker', ['exec', `supabase_db_${LOCAL_PROJECT}`, 'psql', '-U', 'postgres', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-c', 'DELETE FROM public.playnext_accounts;']);
+  }
   await client.auth.signOut();
   await mkdir(resolve(root, '.local'), { recursive: true });
   await writeFile(resolve(root, '.local/test-user.json'), JSON.stringify(user) + '\n', { mode: 0o600 });
   const env = { LOCAL_API_URL: assertLoopback(status.API_URL, 54321), LOCAL_PUBLISHABLE_KEY: status.PUBLISHABLE_KEY || status.ANON_KEY, LOCAL_TEST_EMAIL: user.email, LOCAL_TEST_PASSWORD: user.password };
+  const itadKey = String(process.env.ITAD_API_KEY || process.env.ISTHEREANYDEAL_API_KEY || '').trim();
+  if (itadKey && !/[\r\n]/.test(itadKey)) env.ITAD_API_KEY = itadKey;
   await writeFile(resolve(root, '.local/app.env'), Object.entries(env).map(([k, v]) => `${k}=${v}`).join('\n') + '\n', { mode: 0o600 });
 }
 async function up() {

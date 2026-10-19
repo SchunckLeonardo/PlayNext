@@ -2,9 +2,11 @@
 
 ## [2.2.0] — Unreleased
 
+- Integrate Steam, GOG, and Epic Games store price comparisons via the IsThereAnyDeal API (`games/lookup/v1` and `games/prices/v3`) on the discovery card and in the game details dialog, with `USD` / `BRL` currency switching and all-time low tracking.
+- Add multi-layer backend bot and spam protection on `/api/prices`: blocks non-GET methods, honeypot parameters, scraper/headless User-Agents, cross-site fetches, and missing/invalid `X-PlayNext-Client` / `X-PlayNext-Proof` challenge tokens.
+- Enforce a strict 5-minute sliding window rate limiter (capped at 80 upstream calls per 300s to stay safely within IsThereAnyDeal’s 100 requests per 5 minutes quota), per-IP burst/window limits, Singleflight request coalescing, and 30-minute price caching (`ITAD_API_KEY` server secret).
 - Translate the PlayNext interface, demo copy, accessibility labels, tutorials, and documentation into English.
-- Localize GitHub release and pull request descriptions.
-- Replace the tutorial screenshot with a localized English version.
+- Localize GitHub release and pull request descriptions and replace the tutorial screenshot with a localized English version.
 
 ## [2.1.0] — 2026-10-19
 

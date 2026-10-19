@@ -3,18 +3,20 @@ import { readFile } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { localSettings } from './config.mjs';
+import { ItadPriceService, handlePriceApiRequest } from '../dist/prices.js';
 
 const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.jpg': 'image/jpeg' };
-export function createLocalServer(settings, directory = resolve('dist')) {
+export function createLocalServer(settings, directory = resolve('dist'), priceService = new ItadPriceService({ apiKey: settings?.itadApiKey })) {
   return createServer(async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     try {
       const host = new URL('http://' + req.headers.host);
       if (!['127.0.0.1', 'localhost'].includes(host.hostname)) { res.writeHead(403).end(); return; }
-      if (req.method !== 'GET') { res.writeHead(405).end(); return; }
       const path = decodeURIComponent(new URL(req.url, host).pathname);
-      if (path === '/__local/health') { res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ local: true, api: settings.api })); return; }
+      if (path === '/api/prices') { await handlePriceApiRequest(req, res, priceService); return; }
+      if (req.method !== 'GET') { res.writeHead(405).end(); return; }
+      if (path === '/__local/health') { res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ local: true, api: settings.api, prices: priceService.status() })); return; }
       if (path === '/__local/test-user') {
         res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ email: settings.email, password: settings.password })); return;
       }

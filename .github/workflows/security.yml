@@ -94,6 +94,8 @@ jobs:
           version: 2.121.0
       - run: npm ci --ignore-scripts
       - run: npm run local:up
+        env:
+          ITAD_API_KEY: ${{ secrets.ITAD_API_KEY }}
       - run: npm run local:test
       - run: npm run local:down
         if: always()
