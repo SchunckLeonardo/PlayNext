@@ -18,7 +18,7 @@ npm run local:test
 npm run local:down
 ```
 
-Guias: [Docker e conta de teste](docs/LOCAL.md), [SAST/SCA gratuitos](docs/SECURITY-PIPELINE.md) e [releases com aprovação](docs/RELEASES.md). A prévia simples `npm run dev` usa a configuração de produção; para testar alterações e dados use Docker.
+Guias: [Docker e conta de teste](docs/LOCAL.md), [SAST/SCA gratuitos](docs/SECURITY-PIPELINE.md) e [releases com aprovação](docs/RELEASES.md). `npm run dev` também inicia o ambiente Docker isolado; o desenvolvimento local usa a conta sintética e o banco local por padrão.
 
 Para outra hospedagem estática, publique `dist/` e atualize as URLs permitidas no Supabase Auth. Produção requer HTTPS.
 

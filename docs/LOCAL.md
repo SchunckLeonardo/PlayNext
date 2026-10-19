@@ -11,6 +11,8 @@ npm ci --ignore-scripts
 npm run local:up
 ```
 
+`npm run dev` é um atalho para a mesma inicialização Docker.
+
 Abra http://127.0.0.1:4173. A faixa **AMBIENTE LOCAL** identifica os dados sintéticos. Em **Entrar**, clique **Entrar com conta de teste local**.
 
 A identidade `qa@playnext.test` é registrada de verdade no **Auth local**. A senha aleatória é gerada automaticamente e fica em `.local/test-user.json` e `.local/app.env`, ignorados pelo Git. O frontend local recebe apenas sua chave publicável e essa fixture; a chave administrativa da CLI fica em memória no processo de preparação. Não envie nenhum desses arquivos a serviços de produção.
