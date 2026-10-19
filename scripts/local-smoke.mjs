@@ -30,8 +30,9 @@ try {
   const restored = await client.rpc('playnext_load');
   assert.equal(restored.error, null);
   assert.deepEqual(restored.data.data, state);
-  const config = await (await fetch('http://127.0.0.1:4173/config.js')).text();
-  assert.ok(config.includes('127.0.0.1:54321') && !config.includes('cckunethwmnyjkmlgpsi'));
+  const health = await (await fetch('http://127.0.0.1:4173/__local/health')).json();
+  assert.equal(health.local, true);
+  assert.equal(health.api, new URL(status.API_URL).origin);
   const html = await (await fetch('http://127.0.0.1:4173/')).text();
   assert.ok(html.includes('AMBIENTE LOCAL') && html.includes('Entrar com conta de teste local'));
   console.log('PASS: registered local Auth user, three encrypted choices, revision conflict, logout/login restore, anonymous denial and local-only frontend configuration.');

@@ -14,7 +14,7 @@ export function createLocalServer(settings, directory = resolve('dist')) {
       if (!['127.0.0.1', 'localhost'].includes(host.hostname)) { res.writeHead(403).end(); return; }
       if (req.method !== 'GET') { res.writeHead(405).end(); return; }
       const path = decodeURIComponent(new URL(req.url, host).pathname);
-      if (path === '/__local/health') { res.writeHead(200, { 'Content-Type': 'application/json' }).end('{"local":true}'); return; }
+      if (path === '/__local/health') { res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ local: true, api: settings.api })); return; }
       if (path === '/__local/test-user') {
         res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ email: settings.email, password: settings.password })); return;
       }

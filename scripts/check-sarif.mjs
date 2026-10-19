@@ -5,12 +5,18 @@ import { resolve } from 'node:path';
 export function highSecurityFindings(sarif) {
   if (!Array.isArray(sarif.runs) || !sarif.runs.length) throw new Error('Missing SAST results.');
   return sarif.runs.flatMap(run => {
-    const rules = new Map((run.tool?.driver?.rules || []).map(rule => [rule.id, rule]));
+    const driver = run.tool?.driver;
+    const extensions = run.tool?.extensions || [];
+    const allRules = [driver, ...extensions].flatMap(component => component?.rules || []);
+    if (!allRules.length) throw new Error('Missing SAST rule metadata.');
     return (run.results || []).filter(result => {
-      if (result.suppressions?.some(s => s.status === 'accepted')) return false;
-      const rule = rules.get(result.ruleId);
+      const ref = result.rule;
+      const component = Number.isInteger(ref?.toolComponent?.index) ? extensions[ref.toolComponent.index] : driver;
+      const rule = component?.rules?.[result.ruleIndex ?? ref?.index] || allRules.find(rule => rule.id === (result.ruleId || ref?.id));
+      if (!rule) throw new Error('Missing SAST rule metadata for a finding.');
       const severity = Number(rule?.properties?.['security-severity']);
-      return severity >= 7 || (!Number.isFinite(severity) && result.level === 'error');
+      if (!Number.isFinite(severity) && rule.properties?.tags?.includes('security')) throw new Error('Missing security severity.');
+      return severity >= 7 || (!Number.isFinite(severity) && (result.level || rule.defaultConfiguration?.level) === 'error');
     }).map(result => result.ruleId);
   });
 }

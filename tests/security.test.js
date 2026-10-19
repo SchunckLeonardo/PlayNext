@@ -9,7 +9,14 @@ test('SAST gate rejects missing reports and detects high severity results', () =
   assert.throws(() => highSecurityFindings({}), /Missing/);
   const report = { runs: [{ tool: { driver: { rules: [{ id: 'test/injection', properties: { 'security-severity': '9.1' } }] } }, results: [{ ruleId: 'test/injection' }] }] };
   assert.deepEqual(highSecurityFindings(report), ['test/injection']);
-  assert.deepEqual(highSecurityFindings({ runs: [{ results: [] }] }), []);
+  assert.deepEqual(highSecurityFindings({ runs: [{ ...report.runs[0], results: [] }] }), []);
+  assert.throws(() => highSecurityFindings({ runs: [{ results: [] }] }), /metadata/);
+});
+test('SAST gate resolves CodeQL query-pack rule metadata even when the result has no level', () => {
+  const report = { runs: [{ tool: { driver: { rules: [] }, extensions: [{ rules: [{ id: 'test/high', properties: { 'security-severity': '8.1' } }] }] }, results: [{ ruleId: 'test/high', rule: { index: 0, toolComponent: { index: 0 } } }] }] };
+  assert.deepEqual(highSecurityFindings(report), ['test/high']);
+  report.runs[0].tool.extensions[0].rules[0].properties['security-severity'] = '5.0';
+  assert.deepEqual(highSecurityFindings(report), []);
 });
 test('local test account configuration cannot target a cloud or non-loopback endpoint', () => {
   assert.equal(assertLoopback('http://127.0.0.1:54321', 54321), 'http://127.0.0.1:54321');
