@@ -10,7 +10,7 @@ const $$ = selector => [...document.querySelectorAll(selector)];
 const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const labelGenre = slug => GENRES.find(g => g.slug === slug)?.name || genres.find(g => g.slug === slug)?.name || slug;
 const platformNames = game => game.platforms.map(slug => PLATFORMS.find(p => p.slug === slug)?.label).filter(Boolean).join(' · ');
-const image = (game, className = '', loading = 'lazy') => safeImage(game.image) ? `<img class="${className}" src="${escape(safeImage(game.image))}" alt="Arte de ${escape(game.name)}" loading="${loading}" draggable="false">` : '';
+const image = (game, className = '', loading = 'lazy') => safeImage(game.image) ? `<img class="${className}" src="${escape(safeImage(game.image))}" alt="Artwork for ${escape(game.name)}" loading="${loading}" draggable="false">` : '';
 for (const storage of ['localStorage', 'sessionStorage']) {
   try { removeLegacyKeys(window[storage]); } catch {}
 }
@@ -53,14 +53,14 @@ function renderFilters() {
   $('#platform-options').innerHTML = groups.map(family => `<div class="platform-family"><div class="family-label">${family}</div><div class="platform-chips">${PLATFORMS.filter(p => p.family === family).map(p => `<button class="platform-chip" data-platform="${p.slug}" aria-pressed="${filters.platforms.includes(p.slug)}"${client && !catalogPlatforms.some(cp => cp.slug === p.slug) ? ' disabled' : ''}>${p.label}</button>`).join('')}</div></div>`).join('');
   $('#all-platforms').classList.toggle('selected', !filters.platforms.length);
   $('#all-platforms').setAttribute('aria-pressed', String(!filters.platforms.length));
-  $('#genre').innerHTML = '<option value="">Todos os gêneros</option>' + genres.map(g => `<option value="${escape(g.slug)}">${escape(labelGenre(g.slug))}</option>`).join('');
+  $('#genre').innerHTML = '<option value="">All genres</option>' + genres.map(g => `<option value="${escape(g.slug)}">${escape(labelGenre(g.slug))}</option>`).join('');
   if (filters.genre && !genres.some(g => g.slug === filters.genre)) filters.genre = '';
   $('#genre').value = filters.genre;
 }
 function updateConnection() {
   $('#connection-status').classList.toggle('connected', !!client);
-  $('#connection-status').innerHTML = `<i></i>${client ? 'RAWG conectada' : 'Modo demonstração'}`;
-  $('#key-button-label').textContent = rawgKey ? 'Minha chave' : 'Conectar RAWG';
+  $('#connection-status').innerHTML = `<i></i>${client ? 'RAWG connected' : 'Demo mode'}`;
+  $('#key-button-label').textContent = rawgKey ? 'My key' : 'Connect RAWG';
   $('#demo-banner').hidden = !!client;
   $('#disconnect').hidden = !rawgKey;
 }
@@ -75,27 +75,27 @@ function renderCard() {
   $$('[data-action="shuffle"]').forEach(b => { b.disabled = loading || deciding; });
   if (loading) {
     card.setAttribute('aria-busy', 'true');
-    card.innerHTML = '<div class="skeleton"></div><div class="loading-label"><span class="spinner"></span>Encontrando sua próxima aventura…</div>';
-    $('#deck-summary').innerHTML = '<span class="live-dot"></span> Explorando o catálogo da RAWG';
+    card.innerHTML = '<div class="skeleton"></div><div class="loading-label"><span class="spinner"></span>Finding your next adventure…</div>';
+    $('#deck-summary').innerHTML = '<span class="live-dot"></span> Exploring the RAWG catalog';
     return;
   }
   card.removeAttribute('aria-busy');
-  $('#deck-summary').innerHTML = `<span class="live-dot"></span>${client ? 'Descobertas no catálogo RAWG' : `Demonstração · ${queue.length} ${queue.length === 1 ? 'jogo' : 'jogos'} para explorar`}`;
+  $('#deck-summary').innerHTML = `<span class="live-dot"></span>${client ? 'Discovering the RAWG catalog' : `Demo · ${queue.length} ${queue.length === 1 ? 'game' : 'games'} to explore`}`;
   if (!game || loadError) {
     card.classList.add('is-empty');
     const hasFilters = filters.platforms.length || filters.genre;
-    let title = 'Você explorou esta seleção!';
-    let text = client ? 'Busque outra seleção aleatória ou ajuste os filtros para continuar sua jornada.' : 'Suas escolhas estão na coleção. Conecte a RAWG para descobrir novos jogos ou reveja seus filtros.';
-    if (hasFilters && !loadError) { title = 'Vamos abrir um pouco o universo?'; text = client ? 'Nenhum jogo novo nesta seleção. Tente outra rodada ou amplie seus filtros.' : 'A seleção de demonstração é pequena. Amplie os filtros ou conecte a RAWG para explorar mais.'; }
-    if (loadError) { title = 'Uma pausa na aventura.'; text = loadError; }
-    card.innerHTML = `<div class="empty-card">${icon(loadError ? 'info' : 'shuffle')}<h2>${title}</h2><p>${escape(text)}</p><button class="button primary-button" data-action="${client ? 'shuffle' : hasFilters ? 'reset-filters' : 'api'}">${loadError ? 'Tentar novamente' : client ? 'Buscar outra seleção' : hasFilters ? 'Limpar filtros' : 'Conectar RAWG'}${icon('arrow')}</button>${!client && hasFilters ? '<button class="text-button" data-action="api">Descobrir mais com a RAWG</button>' : ''}</div>`;
+    let title = 'You’ve explored this selection!';
+    let text = client ? 'Find another random selection or adjust the filters to continue your journey.' : 'Your choices are in your collection. Connect RAWG to discover more games or review your filters.';
+    if (hasFilters && !loadError) { title = 'Want to broaden your search?'; text = client ? 'No new games in this selection. Try another round or broaden your filters.' : 'The demo selection is small. Broaden your filters or connect RAWG to explore more.'; }
+    if (loadError) { title = 'A pause in the adventure.'; text = loadError; }
+    card.innerHTML = `<div class="empty-card">${icon(loadError ? 'info' : 'shuffle')}<h2>${title}</h2><p>${escape(text)}</p><button class="button primary-button" data-action="${client ? 'shuffle' : hasFilters ? 'reset-filters' : 'api'}">${loadError ? 'Try again' : client ? 'Find another selection' : hasFilters ? 'Clear filters' : 'Connect RAWG'}${icon('arrow')}</button>${!client && hasFilters ? '<button class="text-button" data-action="api">Discover more with RAWG</button>' : ''}</div>`;
     $('#card-announcement').textContent = title;
     return;
   }
   const supported = platformNames(game);
-  const year = /^\d{4}/.test(game.released || '') ? game.released.slice(0, 4) : 'Ano não informado';
-  card.innerHTML = `${image(game, 'game-image', 'eager')}<div class="game-scrim"></div><div class="game-card-top"><span class="game-category">${icon('shuffle')} ${client ? 'SUA PRÓXIMA DESCOBERTA' : 'SELEÇÃO DEMONSTRAÇÃO'}</span>${game.rating ? `<span class="game-rating">${icon('star')} ${game.rating.toFixed(1)} <span class="rating-max">/ 5</span></span>` : ''}</div><span class="swipe-stamp" id="swipe-stamp"></span><div class="game-copy"><div class="game-genres">${game.genres.slice(0, 3).map(slug => `<span>${escape(labelGenre(slug))}</span>`).join('')}</div><h2 class="game-title">${escape(game.name)}</h2>${game.description ? `<p class="game-description">${escape(game.description)}</p>` : ''}<div class="game-meta"><div class="game-meta-left"><span>${year}</span><span class="meta-divider"></span><span class="game-platforms" title="${escape(supported)}">${escape(supported || 'Ver plataformas na RAWG')}</span></div><button class="details-link" data-details="${game.id}">Ver detalhes ${icon('external')}</button></div></div>`;
-  $('#card-announcement').textContent = `Sugestão: ${game.name}. ${game.genres.map(labelGenre).join(', ')}. Use as setas para escolher.`;
+  const year = /^\d{4}/.test(game.released || '') ? game.released.slice(0, 4) : 'Release year unknown';
+  card.innerHTML = `${image(game, 'game-image', 'eager')}<div class="game-scrim"></div><div class="game-card-top"><span class="game-category">${icon('shuffle')} ${client ? 'YOUR NEXT DISCOVERY' : 'DEMO SELECTION'}</span>${game.rating ? `<span class="game-rating">${icon('star')} ${game.rating.toFixed(1)} <span class="rating-max">/ 5</span></span>` : ''}</div><span class="swipe-stamp" id="swipe-stamp"></span><div class="game-copy"><div class="game-genres">${game.genres.slice(0, 3).map(slug => `<span>${escape(labelGenre(slug))}</span>`).join('')}</div><h2 class="game-title">${escape(game.name)}</h2>${game.description ? `<p class="game-description">${escape(game.description)}</p>` : ''}<div class="game-meta"><div class="game-meta-left"><span>${year}</span><span class="meta-divider"></span><span class="game-platforms" title="${escape(supported)}">${escape(supported || 'View platforms on RAWG')}</span></div><button class="details-link" data-details="${game.id}">View details ${icon('external')}</button></div></div>`;
+  $('#card-announcement').textContent = `Suggested: ${game.name}. ${game.genres.map(labelGenre).join(', ')}. Use the arrow keys to choose.`;
   // Preload only the next cover to keep the next swipe immediate.
   if (queue[1]?.image) { const next = new Image(); next.src = safeImage(queue[1].image); }
 }
@@ -108,7 +108,7 @@ function renderStats() {
     $(`#tab-count-${status}`).textContent = count;
   }
   $('#tab-count-all').textContent = history.length;
-  $('#recent-list').innerHTML = history.length ? history.slice(0, 3).map(({ game, status }) => `<button class="recent-item" data-details="${game.id}">${image(game) || '<span class="recent-fallback"></span>'}<div><h4>${escape(game.name)}</h4><p class="${STATUSES[status].color}">${icon(STATUSES[status].icon)}${STATUSES[status].label}</p></div></button>`).join('') : `<div class="recent-empty">${icon('collection')}<strong>Uma coleção com a sua cara.</strong>Suas primeiras escolhas<br>aparecem por aqui.</div>`;
+  $('#recent-list').innerHTML = history.length ? history.slice(0, 3).map(({ game, status }) => `<button class="recent-item" data-details="${game.id}">${image(game) || '<span class="recent-fallback"></span>'}<div><h4>${escape(game.name)}</h4><p class="${STATUSES[status].color}">${icon(STATUSES[status].icon)}${STATUSES[status].label}</p></div></button>`).join('') : `<div class="recent-empty">${icon('collection')}<strong>A collection that feels like you.</strong>Your first choices<br>will show up here.</div>`;
   if (!$('#collection-view').hidden) renderCollection();
 }
 function demoQueue(initial = false) {
@@ -183,13 +183,13 @@ function undo() {
   undoEntry = null;
   const saved = saveHistory();
   renderStats(); renderCard();
-  if (saved) toast('Última escolha desfeita.', 'undo');
+  if (saved) toast('Last choice undone.', 'undo');
 }
 function renderCollection() {
   $$('[data-tab]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tab === collectionStatus)));
-  const search = $('#collection-search').value.trim().toLocaleLowerCase('pt-BR');
-  const records = history.filter(e => (collectionStatus === 'all' || e.status === collectionStatus) && e.game.name.toLocaleLowerCase('pt-BR').includes(search));
-  $('#collection-grid').innerHTML = records.length ? records.map(({ game, status }) => `<article class="collection-card"><button class="collection-art" data-details="${game.id}" aria-label="Ver detalhes de ${escape(game.name)}">${image(game)}<span class="status-badge ${STATUSES[status].color}">${icon(STATUSES[status].icon)}${STATUSES[status].label}</span></button><div class="collection-card-body"><h2>${escape(game.name)}</h2><p class="collection-platforms">${escape(platformNames(game))}</p><div class="collection-card-controls"><label class="sr-only" for="status-${game.id}">Mudar escolha de ${escape(game.name)}</label><select id="status-${game.id}" data-change-status="${game.id}">${Object.entries(STATUSES).map(([key, value]) => `<option value="${key}"${key === status ? ' selected' : ''}>${value.label}</option>`).join('')}</select><button class="icon-button" data-remove="${game.id}" aria-label="Remover ${escape(game.name)} da coleção">${icon('trash')}</button></div></div></article>`).join('') : `<div class="collection-empty">${icon(search ? 'search' : collectionStatus === 'all' ? 'collection' : STATUSES[collectionStatus].icon)}<h2>${search ? 'Esse jogo ainda não está por aqui.' : collectionStatus === 'all' ? 'Toda aventura tem um começo.' : 'Sua próxima escolha vem aí.'}</h2><p>${search ? 'Tente outro nome ou confira as outras listas da coleção.' : 'Deslize os jogos na descoberta. Suas escolhas ficam organizadas aqui, prontas para o próximo play.'}</p>${search ? '<button class="button primary-button" data-action="clear-search">Limpar busca</button>' : `<a href="#discover" class="button primary-button">Descobrir jogos ${icon('arrow')}</a>`}</div>`;
+  const search = $('#collection-search').value.trim().toLocaleLowerCase('en-US');
+  const records = history.filter(e => (collectionStatus === 'all' || e.status === collectionStatus) && e.game.name.toLocaleLowerCase('en-US').includes(search));
+  $('#collection-grid').innerHTML = records.length ? records.map(({ game, status }) => `<article class="collection-card"><button class="collection-art" data-details="${game.id}" aria-label="View details for ${escape(game.name)}">${image(game)}<span class="status-badge ${STATUSES[status].color}">${icon(STATUSES[status].icon)}${STATUSES[status].label}</span></button><div class="collection-card-body"><h2>${escape(game.name)}</h2><p class="collection-platforms">${escape(platformNames(game))}</p><div class="collection-card-controls"><label class="sr-only" for="status-${game.id}">Change choice for ${escape(game.name)}</label><select id="status-${game.id}" data-change-status="${game.id}">${Object.entries(STATUSES).map(([key, value]) => `<option value="${key}"${key === status ? ' selected' : ''}>${value.label}</option>`).join('')}</select><button class="icon-button" data-remove="${game.id}" aria-label="Remove ${escape(game.name)} from your collection">${icon('trash')}</button></div></div></article>`).join('') : `<div class="collection-empty">${icon(search ? 'search' : collectionStatus === 'all' ? 'collection' : STATUSES[collectionStatus].icon)}<h2>${search ? 'This game is not here yet.' : collectionStatus === 'all' ? 'Every adventure starts somewhere.' : 'Your next choice is up next.'}</h2><p>${search ? 'Try another name or check the other collection lists.' : 'Swipe through games in Discover. Your choices are organized here, ready for your next play.'}</p>${search ? '<button class="button primary-button" data-action="clear-search">Clear search</button>' : `<a href="#discover" class="button primary-button">Discover games ${icon('arrow')}</a>`}</div>`;
 }
 function route() {
   const collection = location.hash.startsWith('#collection');
@@ -205,7 +205,7 @@ function route() {
 function openApi() {
   $('#api-error').hidden = true;
   $('#api-key').type = 'password';
-  $('#toggle-key').setAttribute('aria-label', 'Mostrar chave de API');
+  $('#toggle-key').setAttribute('aria-label', 'Show API key');
   if (!$('#api-dialog').open) $('#api-dialog').showModal();
   $('#api-key').focus();
 }
@@ -215,12 +215,12 @@ async function connect(key, automatic = false) {
   connectionController = controller;
   const candidate = new RawgClient(key);
   $('#connect-button').disabled = true;
-  $('#connect-button').innerHTML = '<span class="spinner"></span> Conectando à RAWG…';
+  $('#connect-button').innerHTML = '<span class="spinner"></span> Connecting to RAWG…';
   $('#api-error').hidden = true;
   try {
     const catalog = await candidate.connect(controller.signal);
     if (controller.signal.aborted) return;
-    if (!catalog.platforms.some(p => PLATFORMS.some(known => known.slug === p.slug))) throw new Error('A RAWG não retornou as plataformas esperadas. Tente novamente.');
+    if (!catalog.platforms.some(p => PLATFORMS.some(known => known.slug === p.slug))) throw new Error('RAWG did not return the expected platforms. Try again.');
     requestController?.abort();
     client = candidate;
     catalogPlatforms = catalog.platforms;
@@ -231,15 +231,15 @@ async function connect(key, automatic = false) {
     undoEntry = null;
     renderFilters(); updateConnection();
     $('#api-dialog').close();
-    if (!automatic) toast('RAWG conectada. Vamos encontrar seu próximo jogo!', 'key');
+    if (!automatic) toast('RAWG connected. Let’s find your next game!', 'key');
     await loadGames();
   } catch (error) {
     if (controller.signal.aborted) return;
     $('#api-error').textContent = error.message;
     $('#api-error').hidden = false;
-    if (automatic) toast('Não foi possível reconectar à RAWG. Abra Minha chave para tentar novamente.', 'info');
+    if (automatic) toast('Could not reconnect to RAWG. Open My Key to try again.', 'info');
   } finally {
-    if (!controller.signal.aborted) { $('#connect-button').disabled = false; $('#connect-button').innerHTML = `Conectar e descobrir ${icon('arrow')}`; }
+    if (!controller.signal.aborted) { $('#connect-button').disabled = false; $('#connect-button').innerHTML = `Connect and discover ${icon('arrow')}`; }
   }
 }
 function disconnect() {
@@ -249,7 +249,7 @@ function disconnect() {
   $('#api-key').value = '';
   $('#api-dialog').close();
   renderFilters(); updateConnection(); loadGames();
-  toast('Chave RAWG removida. Sua coleção foi mantida.', 'key');
+  toast('RAWG key removed. Your collection was kept.', 'key');
 }
 async function openDetails(id) {
   const game = queue.find(g => g.id === id) || history.find(e => e.game.id === id)?.game;
@@ -258,13 +258,13 @@ async function openDetails(id) {
   const controller = new AbortController();
   detailsController = controller;
   detailsGameId = id;
-  $('#details-content').innerHTML = `<div class="details-art">${image(game, '', 'eager')}<button class="icon-button" data-close="details-dialog" aria-label="Fechar detalhes">${icon('x')}</button></div><div class="details-body"><div class="game-genres">${game.genres.map(g => `<span>${escape(labelGenre(g))}</span>`).join('')}</div><h2>${escape(game.name)}</h2><div class="details-meta"><span>${escape(platformNames(game))}</span>${game.metacritic ? `<span>Metacritic: ${game.metacritic}</span>` : ''}</div><p class="details-description" id="details-description">${client ? 'Carregando os detalhes da RAWG…' : escape(game.description || 'Confira mais informações na RAWG.')}</p><a class="button primary-button" href="https://rawg.io/games/${encodeURIComponent(game.slug)}" target="_blank" rel="noopener noreferrer">Ver na RAWG ${icon('external')}</a><p class="details-source">${client ? 'Descrição original fornecida pela RAWG; pode estar em inglês.' : 'Demonstração com texto editorial em português. Capas e notas: RAWG.'}</p></div>`;
+  $('#details-content').innerHTML = `<div class="details-art">${image(game, '', 'eager')}<button class="icon-button" data-close="details-dialog" aria-label="Close details">${icon('x')}</button></div><div class="details-body"><div class="game-genres">${game.genres.map(g => `<span>${escape(labelGenre(g))}</span>`).join('')}</div><h2>${escape(game.name)}</h2><div class="details-meta"><span>${escape(platformNames(game))}</span>${game.metacritic ? `<span>Metacritic: ${game.metacritic}</span>` : ''}</div><p class="details-description" id="details-description">${client ? 'Loading RAWG details…' : escape(game.description || 'See more information on RAWG.')}</p><a class="button primary-button" href="https://rawg.io/games/${encodeURIComponent(game.slug)}" target="_blank" rel="noopener noreferrer">View on RAWG ${icon('external')}</a><p class="details-source">${client ? 'Original description provided by RAWG; it may be in English.' : 'Demo with English editorial copy. Covers and ratings: RAWG.'}</p></div>`;
   $('#details-dialog').showModal();
   if (client) {
     try {
       const details = await client.details(id, controller.signal);
       if (controller.signal.aborted || detailsGameId !== id) return;
-      $('#details-description').textContent = details?.description || 'A RAWG não disponibilizou uma descrição para este jogo.';
+      $('#details-description').textContent = details?.description || 'RAWG did not provide a description for this game.';
     } catch (error) {
       if (!controller.signal.aborted && detailsGameId === id) $('#details-description').textContent = error.message;
     }
@@ -292,7 +292,7 @@ document.addEventListener('click', event => {
     const entry = history.find(e => e.game.id === id);
     history = history.filter(e => e.game.id !== id); undoEntry = null;
     if (entry && matchesFilters(entry.game, filters.platforms, filters.genre) && !queue.some(g => g.id === id)) queue.push(entry.game);
-    if (saveHistory()) toast('Jogo removido. Ele pode aparecer nas descobertas novamente.', 'undo');
+    if (saveHistory()) toast('Game removed. It may appear in Discover again.', 'undo');
     renderStats(); renderCard();
     const target = $('#collection-grid select') || $('[data-tab="all"]'); target?.focus({ preventScroll: true });
     return;
@@ -328,11 +328,11 @@ document.addEventListener('change', event => {
 $('#api-form').addEventListener('submit', event => { event.preventDefault(); const key = $('#api-key').value.trim(); if (key) connect(key); });
 $('#toggle-key').addEventListener('click', () => {
   const input = $('#api-key'); input.type = input.type === 'password' ? 'text' : 'password';
-  $('#toggle-key').setAttribute('aria-label', input.type === 'password' ? 'Mostrar chave de API' : 'Ocultar chave de API');
+  $('#toggle-key').setAttribute('aria-label', input.type === 'password' ? 'Show API key' : 'Hide API key');
 });
 $('#api-dialog').addEventListener('close', () => {
   connectionController?.abort(); $('#api-key').value = '';
-  $('#connect-button').disabled = false; $('#connect-button').innerHTML = `Conectar e descobrir ${icon('arrow')}`;
+  $('#connect-button').disabled = false; $('#connect-button').innerHTML = `Connect and discover ${icon('arrow')}`;
 });
 $('#details-dialog').addEventListener('close', () => { detailsController?.abort(); detailsGameId = null; });
 for (const dialog of $$('dialog')) dialog.addEventListener('click', event => {

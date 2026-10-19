@@ -34,13 +34,13 @@ export function cleanState(value) {
 }
 export function accountMessage(error) {
   const code = error?.code;
-  if (code === '40001' || error?.message?.includes('REVISION_CONFLICT')) return 'Sua conta mudou em outra aba. Exporte as escolhas desta aba e entre novamente para carregar a versão mais recente.';
-  if (code === 'popup_blocked') return 'Permita a janela de login do Google neste site e tente novamente. Suas escolhas continuam nesta aba.';
-  if (code === 'oauth_cancelled') return 'A entrada com Google foi cancelada. Você pode tentar novamente quando quiser.';
-  if (code === 'oauth_timeout') return 'O login com Google demorou demais. Tente novamente.';
-  if (code === 'provider_disabled') return 'O login Google ainda não foi ativado neste projeto. Tente novamente em instantes.';
-  if (code === '22023') return 'Sua coleção excedeu o limite de 5.000 jogos ou contém dados inválidos. Exporte seus dados antes de continuar.';
-  return 'Não foi possível acessar sua conta. Confira a conexão e tente novamente.';
+  if (code === '40001' || error?.message?.includes('REVISION_CONFLICT')) return 'Your account changed in another tab. Export this tab’s choices and sign in again to load the latest version.';
+  if (code === 'popup_blocked') return 'Allow pop-ups for this site and try again. Your choices will remain in this tab.';
+  if (code === 'oauth_cancelled') return 'Google sign-in was canceled. You can try again whenever you like.';
+  if (code === 'oauth_timeout') return 'Google sign-in timed out. Try again.';
+  if (code === 'provider_disabled') return 'Google sign-in is not enabled for this project yet. Try again in a moment.';
+  if (code === '22023') return 'Your collection exceeds the 5,000-game limit or contains invalid data. Export your data before continuing.';
+  return 'Could not access your account. Check your connection and try again.';
 }
 
 // Serializes saves and refuses writes after a conflict. The caller keeps unsaved data in memory.

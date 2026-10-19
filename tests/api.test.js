@@ -66,15 +66,15 @@ for (const status of [401, 403, 429, 500]) test(`RAWG status ${status} has a cle
 });
 test('network exceptions never expose a request URL or key', async () => {
   const api = new RawgClient('sensitive-test-placeholder', async () => { throw Error('failed https://api.rawg.io?key=sensitive-test-placeholder'); });
-  await assert.rejects(api.get('games'), error => !error.message.includes('sensitive-test-placeholder') && error.message.includes('conexão'));
+  await assert.rejects(api.get('games'), error => !error.message.includes('sensitive-test-placeholder') && error.message.includes('connection'));
 });
 test('cancellation propagates and malformed data is rejected', async () => {
   const controller = new AbortController(); controller.abort();
   const api = new RawgClient('test-key', async () => { throw new DOMException('Aborted', 'AbortError'); });
   await assert.rejects(api.get('games', {}, controller.signal), error => error.name === 'AbortError');
   const malformed = new RawgClient('test-key', async () => response({ results: 'unexpected' }));
-  await assert.rejects(malformed.sample({ platforms: [4] }), /lista inesperada/);
-  await assert.rejects(malformed.sample({ platforms: [] }), /plataforma/);
+  await assert.rejects(malformed.sample({ platforms: [4] }), /unexpected list/);
+  await assert.rejects(malformed.sample({ platforms: [] }), /platform/);
 });
 
 

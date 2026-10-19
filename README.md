@@ -1,66 +1,66 @@
 # PlayNext
 
-Um jogo por vez para decidir seu próximo play. Filtros de plataforma e gênero, swipe e três listas: **Vou jogar**, **Sem interesse** e **Já joguei**.
+One game at a time to help you pick your next play. Filter by platform and genre, swipe to choose, and keep three lists: **Want to play**, **Not interested**, and **Played**.
 
-Site: https://playnext-game-swipe.leonardorainha.chatgpt.site
+Website: https://playnext-game-swipe.leonardorainha.chatgpt.site
 
-Código: https://github.com/SchunckLeonardo/PlayNext
+Source: https://github.com/SchunckLeonardo/PlayNext
 
-## Executar
+## Run locally
 
-Node.js 24; sem etapa de build. O SDK oficial Supabase JS 2.118.0 está versionado em `dist/vendor/`, com sua licença, e inventariado no lockfile para SCA. Para desenvolvimento e QA, use o ambiente Docker isolado.
+Node.js 24; no build step required. The official Supabase JS SDK 2.118.0 is versioned in `dist/vendor/`, with its license, and listed in the lockfile for SCA. Use the isolated Docker environment for development and QA.
 
 ```sh
 npm ci --ignore-scripts
 npm run local:up
-# http://127.0.0.1:4173 — conta sintética local
+# http://127.0.0.1:4173 — synthetic local test account
 npm run local:test
 npm run local:down
 ```
 
-Guias: [Docker e conta de teste](docs/LOCAL.md), [SAST/SCA gratuitos](docs/SECURITY-PIPELINE.md) e [releases com aprovação](docs/RELEASES.md). `npm run dev` também inicia o ambiente Docker isolado; o desenvolvimento local usa a conta sintética e o banco local por padrão.
+Guides: [Docker and the test account](docs/LOCAL.md), [free SAST/SCA](docs/SECURITY-PIPELINE.md), and [releases and approval](docs/RELEASES.md). `npm run dev` also starts the isolated Docker environment; development uses the synthetic account and local database by default.
 
-Para outra hospedagem estática, publique `dist/` e atualize as URLs permitidas no Supabase Auth. Produção requer HTTPS.
+To use another static host, publish `dist/` and update the allowed URLs in Supabase Auth. Production requires HTTPS.
 
-## Usar
+## Use the app
 
-1. Experimente 12 jogos reais da demonstração ou conecte sua própria chave RAWG. **Como obter a chave** abre um tutorial com quatro capturas reais feitas com Playwright.
-2. Selecione plataformas e gênero, ou deixe geral. Plataformas: PC, PS1–PS5, DS/NDS, 3DS, Nintendo Switch e Xbox 360. DS e NDS são a mesma plataforma.
-3. Deslize à direita para **Vou jogar**, à esquerda para **Sem interesse**, ou use **Já joguei**. Teclas ← ↓ → também escolhem; **Z** desfaz.
-4. Na coleção, busque, mude a classificação ou remova jogos. Cada jogo tem apenas uma classificação e deixa de aparecer no baralho depois de escolhido.
-5. Entre para sincronizar sua coleção, filtros e chave criptografados entre dispositivos. Sem login, os dados ficam apenas na memória da aba. Ao recarregar, entre novamente; tokens não são persistidos no navegador.
+1. Try 12 real games in the demo or connect your own RAWG API key. **How to get a key** opens a tutorial with four real Playwright screenshots.
+2. Select platforms and a genre, or leave the filters broad. Supported platforms: PC, PS1–PS5, DS/NDS, 3DS, Nintendo Switch, and Xbox 360. DS and NDS refer to the same platform.
+3. Swipe right for **Want to play**, left for **Not interested**, or use **Played**. Arrow keys ← ↓ → make the same choices; press **Z** to undo.
+4. In your collection, search, change a game's status, or remove it. Each game has one status and leaves the deck after you choose.
+5. Sign in to sync your collection, filters, and encrypted API key across devices. Without signing in, data stays in the tab's memory. Sign in again after a reload; browser session tokens are not persisted.
 
-O único método de entrada é **Google**. O PlayNext não cria senhas próprias nem depende de mensagens de confirmação/recuperação. O Supabase mantém a identidade Google e a sessão que autoriza o acesso aos dados privados. O login abre uma janela separada para preservar as escolhas de visitante na memória; permita essa janela no navegador.
+**Google** is the only sign-in method. PlayNext does not create passwords or depend on confirmation or recovery emails. Supabase manages the Google identity and the session that authorizes access to private data. Sign-in opens a separate window to preserve guest choices in memory; allow pop-ups in your browser.
 
-## Segurança e dados
+## Security and data
 
-- Google confirma a identidade; Supabase Auth gerencia a identidade vinculada, e-mail, perfil básico e sessões. O provedor de e-mail/senha está desabilitado. Não copiamos o perfil para o documento privado da aplicação.
-- Supabase Vault armazena **um documento criptografado por usuário**, com chave RAWG, coleção e filtros. A chave de criptografia é gerenciada pelo Supabase, fora do banco. Dados de Auth também dependem das proteções da infraestrutura do provedor.
-- RPCs vinculam cada operação a `auth.uid()`; não aceitam um identificador de proprietário fornecido pelo cliente. RLS protege os metadados; visitantes não têm acesso e usuários não podem ler o Vault diretamente.
-- Salvamentos serializados usam revisão otimista para impedir que outra aba sobrescreva escolhas recentes. Falhas ficam visíveis, com retentativa, exportação e saída com descarte explícito.
-- A chave RAWG descriptografada e os tokens ficam na memória. Não há novas gravações em `localStorage` ou `sessionStorage`. As chaves legadas conhecidas são removidas de ambos sem leitura. Escolhas antigas ficam disponíveis para **importação explícita**, sendo removidas do armazenamento antigo após o salvamento criptografado.
-- Exportação pessoal exclui chave RAWG, senha e tokens. A exclusão dos dados do PlayNext remove a identidade vinculada no Supabase Auth, sessões, metadados e o segredo correspondente do banco ativo. A conta Google é preservada. Backups e logs seguem a retenção dos provedores.
-- `dist/config.js` contém URL e **chave publicável** do Supabase; ela é pública por definição. Nunca coloque uma chave `service_role`, chave secreta Supabase ou segredo OAuth Google no frontend/repositório.
-- O serviço descriptografa os dados para uso; administradores autorizados podem acessá-los. Não é criptografia de ponta a ponta nem certificação de conformidade com a LGPD. O aviso de privacidade no site descreve finalidades, provedores, região EUA, retenção, exportação e exclusão. Governança jurídica e processos do controlador continuam necessários.
+- Google verifies identity; Supabase Auth manages the linked identity, email, basic profile, and sessions. Email/password sign-in is disabled. The app does not copy profile data into its private document.
+- Supabase Vault stores **one encrypted document per user** containing the RAWG key, collection, and filters. Supabase manages the encryption key outside the database. Auth data also relies on the provider's infrastructure protections.
+- RPCs bind each operation to `auth.uid()` and never accept an owner ID from the client. RLS protects metadata; guests have no access, and users cannot read Vault directly.
+- Serialized saves use optimistic revisions to prevent another tab from overwriting recent choices. Failures remain visible, with retry, export, and an explicit discard option when signing out.
+- The decrypted RAWG key and tokens stay in memory. The app does not write new values to `localStorage` or `sessionStorage`. Known legacy keys are removed from both without reading them. Older choices can be **imported explicitly** and are removed from old storage after the encrypted save succeeds.
+- Personal exports exclude the RAWG key, passwords, and tokens. Deleting PlayNext data removes the linked Supabase Auth identity, sessions, metadata, and corresponding secret from the active database. The Google account is preserved. Provider backups and logs follow the providers' retention periods.
+- `dist/config.js` contains the Supabase URL and **publishable key**, which is public by design. Never put a `service_role` key, Supabase secret key, or Google OAuth secret in the frontend or repository.
+- The service decrypts data for use; authorized project administrators may access it. This is not end-to-end encryption or legal compliance certification. The site's privacy notice describes purposes, providers, US region, retention, export, and deletion. Legal governance and controller processes remain necessary.
 
 ## RAWG
 
-As consultas vão diretamente à API oficial por HTTPS, usando a chave do visitante. Não há proxy. A RAWG exige a chave no parâmetro da URL; ferramentas de rede do navegador e o próprio provedor podem vê-la. O aplicativo não a registra em logs, exportações ou analytics.
+Requests go directly to the official API over HTTPS using the visitor's key. There is no proxy. RAWG requires the key in the URL query string, where browser network tools and RAWG itself can see it. The app does not put it in logs, exports, or analytics.
 
-`/platforms` e `/genres` descobrem os IDs atuais. `/games` filtra plataformas/gênero/jogos lançados e sorteia páginas em até quatro tentativas limitadas; não promete distribuição estatística uniforme. Escolhas anteriores e duplicatas são excluídas. `/games/{id}` carrega detalhes sob demanda, possivelmente em inglês. Demonstração tem textos editoriais e metadados verificados em 17/10/2026; capas e fontes dependem de internet.
+`/platforms` and `/genres` discover current IDs. `/games` filters by platform, genre, and release status, then samples pages in up to four bounded attempts; it does not promise a uniform statistical distribution. Previous choices and duplicates are excluded. `/games/{id}` loads details on demand, which may be in English. Demo copy is editorial and metadata was checked on 2026-10-17; covers and fonts require an internet connection.
 
-O transporte preserva o contexto nativo de `fetch`, corrigindo `Illegal invocation`. Respostas inválidas podem não ter CORS; nesses casos o navegador só permite uma mensagem genérica de chave/conexão. Sem uma chave RAWG válida fornecida pelo visitante no próprio formulário, não afirmamos ter validado uma consulta real autenticada.
+The transport preserves the native `fetch` context to prevent `Illegal invocation`. Invalid responses may not include CORS headers; in those cases the browser only permits a generic key/connection error. We do not claim to have validated a real authenticated request without a valid RAWG key entered by the visitor in the app.
 
-Fontes: [RAWG API](https://rawg.io/apidocs), [Vault](https://supabase.com/docs/guides/database/vault), [Google Auth](https://supabase.com/docs/guides/auth/social-login/auth-google), [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [direitos dos titulares na ANPD](https://www.gov.br/anpd/pt-br/assuntos/titular-de-dados-1/direito-dos-titulares).
+Sources: [RAWG API](https://rawg.io/apidocs), [Vault](https://supabase.com/docs/guides/database/vault), [Google Auth](https://supabase.com/docs/guides/auth/social-login/auth-google), [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [Brazilian data subject rights](https://www.gov.br/anpd/pt-br/assuntos/titular-de-dados-1/direito-dos-titulares).
 
-## Organização
+## Project layout
 
-- `dist/app.js`, `model.js`, `api.js`: descoberta, escolhas e RAWG.
-- `dist/account.js`, `account-ui.js`, `oauth.js`, `auth-callback.*`, `config.js`: sincronização, login Google e conta.
-- `dist/index.html`, `styles.css`, `account.css`: interface responsiva.
-- `dist/assets/tutorial/`: capturas públicas da RAWG e formulário vazio do PlayNext.
-- `supabase/migrations/`: esquema reproduzível, Vault, RLS e RPCs.
-- `supabase/tests/`: prova transacional de criptografia, isolamento e exclusão, com rollback.
-- `tests/`: regressões independentes da rede; SDK oficial exercitado com armazenamento instrumentado.
-- `design-system/MASTER.md`: direção visual baseada no UI UX Pro Max.
-- `VALIDATION.md`: evidências e limites atuais.
+- `dist/app.js`, `model.js`, `api.js`: discovery, choices, and RAWG.
+- `dist/account.js`, `account-ui.js`, `oauth.js`, `auth-callback.*`, `config.js`: sync, Google sign-in, and account management.
+- `dist/index.html`, `styles.css`, `account.css`: responsive interface.
+- `dist/assets/tutorial/`: public RAWG screenshots and the empty PlayNext form.
+- `supabase/migrations/`: reproducible schema, Vault, RLS, and RPCs.
+- `supabase/tests/`: transactional checks for encryption, isolation, and deletion, with rollback.
+- `tests/`: network-independent regressions; the official SDK is exercised with instrumented storage.
+- `design-system/MASTER.md`: visual direction based on UI UX Pro Max.
+- `VALIDATION.md`: current evidence and limitations.

@@ -34,7 +34,7 @@ try {
   assert.equal(health.local, true);
   assert.equal(health.api, new URL(status.API_URL).origin);
   const html = await (await fetch('http://127.0.0.1:4173/')).text();
-  assert.ok(html.includes('AMBIENTE LOCAL') && html.includes('Entrar com conta de teste local'));
+  assert.ok(html.includes('LOCAL ENVIRONMENT') && html.includes('Sign in with local test account'));
   console.log('PASS: registered local Auth user, three encrypted choices, revision conflict, logout/login restore, anonymous denial and local-only frontend configuration.');
 } finally {
   const restored = await client.rpc('playnext_save', { p_state: original, p_revision: revision });

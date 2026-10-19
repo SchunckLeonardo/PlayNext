@@ -59,7 +59,7 @@ async function up() {
   await prepareAccount(await localStatus());
   console.log('Registered local test account ready. Building PlayNext…');
   run('docker', ['compose', 'up', '--build', '--wait'], { stdio: ['ignore', 'inherit', 'inherit'] });
-  console.log(`PlayNext: http://127.0.0.1:4173 · ${TEST_EMAIL} · click “Entrar com conta de teste local”.`);
+  console.log(`PlayNext: http://127.0.0.1:4173 · ${TEST_EMAIL} · click “Sign in with local test account”.`);
 }
 async function main() {
   if (process.argv[2] === 'up') await up();

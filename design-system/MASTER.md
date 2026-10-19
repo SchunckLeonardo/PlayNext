@@ -1,12 +1,12 @@
 # PlayNext — design system
 
-Direção criada com a skill UI UX Pro Max. A busca inicial `gaming discovery dark immersive --design-system` orientou o contexto de entretenimento, contraste, imagens e acessibilidade. Como a recomendação de vitrine 3D não correspondia ao fluxo de decisão, a consulta específica `dark entertainment discovery --domain style` confirmou **Dark Mode (OLED)**. A consulta `dragging movements alternatives --domain ux` determinou alternativas por botões e teclado.
+This direction was created with the UI UX Pro Max skill. The initial `gaming discovery dark immersive --design-system` search set the entertainment context, contrast, imagery, and accessibility goals. Since a 3D showcase did not fit the decision flow, a focused `dark entertainment discovery --domain style` search confirmed **Dark Mode (OLED)**. The `dragging movements alternatives --domain ux` search established button and keyboard alternatives.
 
-- Produto: descoberta e decisão, com o jogo como elemento principal.
-- Cores: fundo `#111210`, superfície `#1A1B18`, texto `#F3F2E9`, apoio `#A3A59A`, laranja `#F4A16B`. Verde, azul e vermelho distinguem as três escolhas, sempre acompanhados de texto e ícones.
-- Tipografia: Space Grotesk nos títulos, DM Sans nos controles. Hierarquia editorial e nomes de jogos grandes.
-- Layout: filtros, card de jogo e atividade no desktop; fluxo vertical no celular; coleção em grade adaptável.
-- Movimento: saída curta do card na direção da escolha. Respeita `prefers-reduced-motion`.
-- Interação: pointer events para arrastar; botões equivalentes; ← sem interesse, ↓ já joguei, → vou jogar; Z desfaz.
-- Acessibilidade: HTML semântico, labels persistentes, foco visível, dialogs nativos, avisos em regiões live, imagens com texto alternativo, áreas de toque ampliadas em dispositivos de toque.
-- Sem pontuações ou prova social inventadas. A demonstração é identificada e usa capas/notas/identificadores verificados na RAWG; descrições em português são editoriais.
+- Product: discovery and decision-making, with the game as the main focus.
+- Colors: background `#111210`, surface `#1A1B18`, text `#F3F2E9`, secondary `#A3A59A`, and orange `#F4A16B`. Green, blue, and red distinguish the three choices, always paired with text and icons.
+- Type: Space Grotesk for headings, DM Sans for controls. Editorial hierarchy and prominent game titles.
+- Layout: filters, game card, and activity on desktop; vertical flow on mobile; responsive collection grid.
+- Motion: short card exit in the direction of the choice. Respects `prefers-reduced-motion`.
+- Interaction: pointer events for dragging; equivalent buttons; ← not interested, ↓ played, → want to play; Z undoes.
+- Accessibility: semantic HTML, persistent labels, visible focus, native dialogs, live-region announcements, descriptive image text, and larger touch targets on touch devices.
+- No invented ratings or social proof. The demo is identified and uses covers, ratings, and IDs checked against RAWG; descriptions are editorial and in English.
