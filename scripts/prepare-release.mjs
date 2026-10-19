@@ -1,0 +1,28 @@
+import { execFileSync } from 'node:child_process';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { resolve } from 'node:path';
+
+const { version } = JSON.parse(await readFile('package.json', 'utf8'));
+if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error('Use a stable SemVer package version.');
+const tag = 'v' + version;
+execFileSync('git', ['diff', '--quiet', 'HEAD', '--']);
+if (execFileSync('git', ['ls-files', '--others', '--exclude-standard'], { encoding: 'utf8' }).trim()) throw new Error('Commit the complete reviewable source before preparing a release.');
+const sha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+const tracked = execFileSync('git', ['ls-files', '-z', 'dist', '.openai/hosting.json'], { encoding: 'utf8' }).split('\0').filter(Boolean);
+if (!tracked.includes('dist/index.html') || tracked.some(name => /(^|\/)(?:AGENTS\.md|\.env[^/]*|\.local|node_modules)(\/|$)/.test(name))) throw new Error('Invalid production artifact contents.');
+const changelog = await readFile('CHANGELOG.md', 'utf8');
+const heading = `## [${version}]`;
+const start = changelog.indexOf(heading);
+if (start < 0) throw new Error('Add release notes to CHANGELOG.md first.');
+const end = changelog.indexOf('\n## [', start + heading.length);
+const notes = changelog.slice(start, end < 0 ? undefined : end).trim() + `\n\nCommit: ${sha}\n`;
+await mkdir('reports/release', { recursive: true });
+const archive = `playnext-${tag}.zip`;
+execFileSync('git', ['archive', '--format=zip', `--output=${resolve('reports/release', archive)}`, sha, '--', 'dist', '.openai/hosting.json']);
+const checksum = createHash('sha256').update(await readFile(resolve('reports/release', archive))).digest('hex');
+await writeFile('reports/release/notes.md', notes);
+await writeFile('reports/release/SHA256SUMS', `${checksum}  ${archive}\n`);
+await writeFile('reports/release/metadata.json', JSON.stringify({ tag, sha, archive }, null, 2) + '\n');
+if (process.env.GITHUB_OUTPUT) await writeFile(process.env.GITHUB_OUTPUT, `tag=${tag}\nsha=${sha}\n`, { flag: 'a' });
+console.log(`Prepared ${tag} from ${sha}; no publication performed.`);

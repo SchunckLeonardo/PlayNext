@@ -1,0 +1,11 @@
+*
+!dist/
+!dist/**
+!local/
+!local/**
+!scripts/
+!scripts/**
+!tests/
+!tests/**
+!package.json
+!server.mjs

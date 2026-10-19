@@ -3,3 +3,10 @@ node_modules/
 *.tar.gz
 .sites-runtime/
 graphify-out/
+
+# Local runtime and credentials
+.local/
+.env
+.env.*
+!.env.example
+reports/

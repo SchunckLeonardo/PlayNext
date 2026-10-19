@@ -1,0 +1,88 @@
+name: Release
+on:
+  workflow_dispatch:
+    inputs:
+      approved_sha:
+        description: Exact 40-character commit approved by the maintainer
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: release
+  cancel-in-progress: false
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      sha: ${{ steps.release.outputs.sha }}
+    steps:
+      - name: Validate approved immutable commit
+        env:
+          APPROVED_SHA: ${{ inputs.approved_sha }}
+          REF_NAME: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          test "$REF_NAME" = main
+          [[ "$APPROVED_SHA" =~ ^[0-9a-f]{40}$ ]]
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ inputs.approved_sha }}
+          fetch-depth: 0
+      - name: Require reviewed commit in main history
+        env:
+          APPROVED_SHA: ${{ inputs.approved_sha }}
+        run: git merge-base --is-ancestor "$APPROVED_SHA" origin/main
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run check && npm test && npm run security:sca
+      - id: release
+        run: npm run release:prepare
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: approved-release-candidate
+          path: reports/release/
+          if-no-files-found: error
+          retention-days: 7
+  publish:
+    needs: prepare
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: approved-release-candidate
+          path: release
+      - name: Require successful security pipeline for the exact commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_SHA: ${{ needs.prepare.outputs.sha }}
+        run: |
+          gh api "repos/$GH_REPO/actions/runs?head_sha=$RELEASE_SHA&status=success" --jq '.workflow_runs | any(.path == ".github/workflows/security.yml")' | grep -qx true
+      - name: Publish approved immutable release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+          RELEASE_SHA: ${{ needs.prepare.outputs.sha }}
+        shell: bash
+        run: |
+          cd release
+          sha256sum --check SHA256SUMS
+          if gh release view "$RELEASE_TAG" --json isDraft >/dev/null 2>&1; then
+            test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = true
+            test "$(gh release view "$RELEASE_TAG" --json targetCommitish --jq .targetCommitish)" = "$RELEASE_SHA"
+            gh release upload "$RELEASE_TAG" "playnext-$RELEASE_TAG.zip" SHA256SUMS --clobber
+            gh release edit "$RELEASE_TAG" --notes-file notes.md --draft=false --latest
+          else
+            gh release create "$RELEASE_TAG" "playnext-$RELEASE_TAG.zip" SHA256SUMS --target "$RELEASE_SHA" --title "PlayNext $RELEASE_TAG" --notes-file notes.md --latest
+          fi

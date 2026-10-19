@@ -1,6 +1,18 @@
 # Verificação — 19/10/2026
 
-## Automatizada
+## v2.1.0 em revisão — segurança e Docker
+
+- SAST CodeQL `security-extended`; verificador de severidade cobre regras no driver e nos query packs SARIF, inclusive resultados sem `level`. Relatórios sem metadados falham. Um SARIF real com `js/insecure-download`, severidade 8.1, foi usado para comprovar saída 1 do gate; o smoke test verifica a configuração por um endpoint de saúde, sem baixar o módulo JavaScript.
+- SCA: SDK Supabase 2.118.0 e cinco componentes inventariados no lockfile; UMD oficial e cópia vendorizada têm o SHA-256 esperado. `npm audit` encontrou zero vulnerabilidades na verificação local.
+- Conta `qa@playnext.test` registrada no Auth local, com senha aleatória em arquivos ignorados; nenhuma fixture enviada a produção.
+- Aplicação, Postgres, Auth, REST e gateway testados em Docker. Portas 4173/54321/54322 restritas a 127.0.0.1; segunda inicialização preserva o volume e a conta.
+- Integração real: três classificações, salvamento e recuperação após novo login, conflitos, visitante recusado e teste SQL transacional de criptografia/RLS/exclusão. A coleção da fixture é restaurada após o teste. Login também conferido na interface local, sem importar escolhas legadas.
+- Workflows validados com actionlint 1.7.12. As execuções e relatórios do PR são a evidência atual dos checks no GitHub.
+- `main` protegida com cinco checks obrigatórios, PR, sem force-push e regras aplicadas ao administrador. Ambiente `production` exige revisão do mantenedor. Release prepara o SHA exato aprovado e recusa fonte fora do histórico de main.
+- AGENTS.md local excluído em .git/info/exclude; pacote de produção inclui somente dist/ e o manifesto de hospedagem. Não inclui conta local, arquivos .env ou instruções privadas.
+- A release v2.1.0 e o deploy dependem da aprovação do mantenedor; esta preparação não altera o Site de produção.
+
+## Automatizada — versão 2.0.0
 
 - `npm test`: **33 testes passaram**. Filtros, três classificações, normalização, sorteio limitado, cancelamento, erros RAWG e regressão do contexto nativo de fetch. Novos testes comprovam snapshots de salvamento, fila/revisões, conflitos, retentativas, cancelamento na troca de conta e normalização de dados legados. O fluxo Google rejeita origem/janela incorretas, destino externo, popup bloqueado e cancelamento; transfere apenas tokens Supabase e limpa listeners/timers.
 - O **SDK oficial Supabase JS 2.118.0** foi exercitado com URL OAuth Google, sessão/logout simulados e armazenamento instrumentado. Com as mesmas opções usadas pelo aplicativo, não houve leitura ou gravação em armazenamento persistente.
