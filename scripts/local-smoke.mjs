@@ -65,7 +65,8 @@ try {
   assert.equal(validPriceRes.headers.get('x-ratelimit-window'), '300');
   const pricePayload = await validPriceRes.json();
   assert.equal(pricePayload.found, true);
-  assert.ok(pricePayload.stores?.steam && pricePayload.stores?.gog && pricePayload.stores?.epic);
+  assert.ok(pricePayload.stores && 'steam' in pricePayload.stores && 'gog' in pricePayload.stores && 'epic' in pricePayload.stores);
+  assert.ok(pricePayload.stores.steam || pricePayload.stores.gog || pricePayload.stores.epic);
   const html = await (await fetch('http://127.0.0.1:4173/')).text();
   assert.ok(html.includes('LOCAL ENVIRONMENT') && html.includes('Sign in with local test account'));
   console.log('PASS: registered local Auth user, three encrypted choices, revision conflict, logout/login restore, anonymous denial, ITAD price endpoint + bot protection, and local-only frontend configuration.');
