@@ -11,6 +11,8 @@ export const CLIENT_HEADER_NAME = 'x-playnext-client';
 export const CLIENT_HEADER_VALUE = 'playnext-web/2';
 export const PROOF_HEADER_NAME = 'x-playnext-proof';
 export const ALLOWED_COUNTRIES = Object.freeze(['US', 'BR']);
+export const PUBLIC_DEALS_URL = 'https://www.cheapshark.com/api/1.0/deals';
+export const USD_TO_BRL_RATE = 5.45;
 
 export const ITAD_SHOPS = Object.freeze({
   steam: Object.freeze({ key: 'steam', id: 61, label: 'Steam', shortLabel: 'Steam', host: 'store.steampowered.com' }),
@@ -35,7 +37,20 @@ const ALLOWED_STORE_HOSTS = new Set([
 
 const BOT_USER_AGENT_PATTERN = /(bot|crawler|spider|scraper|headlesschrome|curl|wget|python-requests|python-urllib|httpx|aiohttp|scrapy|go-http-client|java\/|axios|got\/|undici|postmanruntime|insomnia|phantomjs|sqlmap|nikto|nmap|masscan|zgrab)/i;
 
-// Reference store data for demo/local catalog when ITAD_API_KEY is not configured in local/demo environments.
+function freeToPlayEntry(steamUrl = '', epicUrl = '') {
+  const stores = {
+    steam: steamUrl ? { amount: 0, regular: 0, cut: 0, url: steamUrl } : null,
+    gog: null,
+    epic: epicUrl ? { amount: 0, regular: 0, cut: 0, url: epicUrl } : null,
+  };
+  return {
+    itadId: null,
+    US: { currency: 'USD', historyLow: { amount: 0, currency: 'USD' }, stores },
+    BR: { currency: 'BRL', historyLow: { amount: 0, currency: 'BRL' }, stores },
+  };
+}
+
+// Reference store data for demo/local catalog and canonical Free-to-Play PC titles.
 const DEMO_STORE_CATALOG = Object.freeze({
   'elden-ring': {
     itadId: '018d937f-590c-728b-b353-387a5a713d7f',
@@ -252,6 +267,26 @@ const DEMO_STORE_CATALOG = Object.freeze({
       },
     },
   },
+  'counter-strike-global-offensive': freeToPlayEntry('https://store.steampowered.com/app/730/CounterStrike_2/'),
+  'counter-strike-2': freeToPlayEntry('https://store.steampowered.com/app/730/CounterStrike_2/'),
+  'dota-2': freeToPlayEntry('https://store.steampowered.com/app/570/Dota_2/'),
+  'team-fortress-2': freeToPlayEntry('https://store.steampowered.com/app/440/Team_Fortress_2/'),
+  'apex-legends': freeToPlayEntry('https://store.steampowered.com/app/1172470/Apex_Legends/', 'https://store.epicgames.com/en-US/p/apex-legends-006cde'),
+  'warframe': freeToPlayEntry('https://store.steampowered.com/app/230410/Warframe/', 'https://store.epicgames.com/en-US/p/warframe'),
+  'destiny-2': freeToPlayEntry('https://store.steampowered.com/app/1085660/Destiny_2/', 'https://store.epicgames.com/en-US/p/destiny-2'),
+  'fortnite': freeToPlayEntry('', 'https://store.epicgames.com/en-US/p/fortnite'),
+  'rocket-league': freeToPlayEntry('', 'https://store.epicgames.com/en-US/p/rocket-league'),
+  'overwatch-2': freeToPlayEntry('https://store.steampowered.com/app/2357570/Overwatch_2/'),
+  'the-sims-4': freeToPlayEntry('https://store.steampowered.com/app/1222670/The_Sims_4/', 'https://store.epicgames.com/en-US/p/the-sims-4'),
+  'path-of-exile': freeToPlayEntry('https://store.steampowered.com/app/238960/Path_of_Exile/', 'https://store.epicgames.com/en-US/p/path-of-exile'),
+  'brawlhalla': freeToPlayEntry('https://store.steampowered.com/app/291550/Brawlhalla/', 'https://store.epicgames.com/en-US/p/brawlhalla'),
+  'paladins': freeToPlayEntry('https://store.steampowered.com/app/444090/Paladins/', 'https://store.epicgames.com/en-US/p/paladins'),
+  'fall-guys': freeToPlayEntry('', 'https://store.epicgames.com/en-US/p/fall-guys'),
+  'halo-infinite': freeToPlayEntry('https://store.steampowered.com/app/1240440/Halo_Infinite/'),
+  'valorant': freeToPlayEntry('', 'https://store.epicgames.com/en-US/p/valorant'),
+  'genshin-impact': freeToPlayEntry('', 'https://store.epicgames.com/en-US/p/genshin-impact'),
+  'pubg-battlegrounds': freeToPlayEntry('https://store.steampowered.com/app/578080/PUBG_BATTLEGROUNDS/', 'https://store.epicgames.com/en-US/p/pubg-59c1d9'),
+  'playerunknowns-battlegrounds': freeToPlayEntry('https://store.steampowered.com/app/578080/PUBG_BATTLEGROUNDS/', 'https://store.epicgames.com/en-US/p/pubg-59c1d9'),
 });
 
 export class PriceError extends Error {
@@ -548,25 +583,211 @@ export function normalizeItadPrices(rawList, { itadId = null, title = '', countr
   };
 }
 
+const EDITION_SUFFIX_PATTERN = /^(?:the final cut|final cut|special edition|ultimate edition|complete edition|definitive edition|remastered|hd remaster|redux|enhanced|enhanced edition|premium edition|game of the year edition|game of the year|goty|goty edition|directors cut|anniversary edition|standard edition|gold edition|deluxe edition|digital deluxe edition|legendary edition|complete|collection|world of assassination)$/;
+const ADDON_NOISE_PATTERN = /\b(?:soundtrack|ost|artbook|art book|upgrade|season pass|expansion pass|dlc|costume|skin|wallpaper|demo|trial|score|music|voice pack|cosmetic|starter pack|currency|coins|points)\b/i;
+
+export function stripTitleNoise(title) {
+  return normalizeTitle(title)
+    .replace(/\s*\((?:19|20)\d{2}\)\s*$/g, '')
+    .replace(/\s*[-–:]\s*Episode\s+\d+\s*$/i, '')
+    .replace(/\s*[-–:]\s*Prepare to Die Edition\s*$/i, '')
+    .trim();
+}
+
+function normalizeComparableTitle(value) {
+  return stripTitleNoise(value)
+    .toLowerCase()
+    .replace(/[™®©]/g, '')
+    .replace(/&/g, ' and ')
+    .replace(/\bviii\b/g, '8')
+    .replace(/\bvii\b/g, '7')
+    .replace(/\bvi\b/g, '6')
+    .replace(/\biv\b/g, '4')
+    .replace(/\biii\b/g, '3')
+    .replace(/\bii\b/g, '2')
+    .replace(/[:\-–—_]+/g, ' ')
+    .replace(/[^\p{L}\p{N}\s]/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function stripEditionWords(comparable) {
+  const words = comparable.split(' ');
+  for (let i = 1; i < words.length; i++) {
+    const suffix = words.slice(i).join(' ');
+    if (EDITION_SUFFIX_PATTERN.test(suffix)) {
+      return words.slice(0, i).join(' ');
+    }
+  }
+  return comparable;
+}
+
+export function scoreDealTitle(queryTitle, candidateTitle) {
+  if (ADDON_NOISE_PATTERN.test(candidateTitle) && !ADDON_NOISE_PATTERN.test(queryTitle)) return 0;
+  const q = normalizeComparableTitle(queryTitle);
+  const c = normalizeComparableTitle(candidateTitle);
+  if (!q || !c) return 0;
+  if (c === q) return 100;
+  if (c.startsWith(q + ' ')) {
+    const rest = c.slice(q.length + 1).trim();
+    if (EDITION_SUFFIX_PATTERN.test(rest)) return 90;
+  }
+  const baseQ = stripEditionWords(q);
+  const baseC = stripEditionWords(c);
+  if (baseQ && baseQ === baseC) return 85;
+  return 0;
+}
+
+const PUBLIC_STORE_MAP = Object.freeze({
+  1: ITAD_SHOPS.steam,
+  7: ITAD_SHOPS.gog,
+  25: ITAD_SHOPS.epic,
+});
+
+export function normalizePublicDeals(rawDeals, { title = '', country = 'US', now = Date.now() } = {}) {
+  const cleanTitle = normalizeTitle(title);
+  const cleanCountry = normalizeCountry(country);
+  const currency = cleanCountry === 'BR' ? 'BRL' : 'USD';
+  const rate = cleanCountry === 'BR' ? USD_TO_BRL_RATE : 1;
+  const links = fallbackStoreLinks(cleanTitle);
+  const stores = { steam: null, gog: null, epic: null };
+  const bestMatchByStore = { steam: 0, gog: 0, epic: 0 };
+  let lowestUsd = Infinity;
+
+  const list = Array.isArray(rawDeals) ? rawDeals : [];
+  for (const deal of list) {
+    const storeMeta = PUBLIC_STORE_MAP[String(deal?.storeID || '')];
+    if (!storeMeta) continue;
+    const matchScore = scoreDealTitle(cleanTitle, String(deal?.title || ''));
+    if (matchScore <= 0) continue;
+
+    const usdSale = Number(deal?.salePrice);
+    if (!Number.isFinite(usdSale) || usdSale < 0) continue;
+    const usdNormal = Number.isFinite(Number(deal?.normalPrice)) && Number(deal.normalPrice) >= usdSale
+      ? Number(deal.normalPrice)
+      : usdSale;
+
+    const amount = Math.round(usdSale * rate * 100) / 100;
+    const regular = Math.round(usdNormal * rate * 100) / 100;
+    const cut = Number.isFinite(Number(deal?.savings)) && Number(deal.savings) > 0
+      ? Math.max(0, Math.min(100, Math.round(Number(deal.savings))))
+      : (regular > amount ? Math.round(((regular - amount) / regular) * 100) : 0);
+
+    if (usdSale < lowestUsd) lowestUsd = usdSale;
+
+    const current = stores[storeMeta.key];
+    const currentScore = bestMatchByStore[storeMeta.key];
+    if (!current || matchScore > currentScore || (matchScore === currentScore && amount < current.amount)) {
+      const steamAppId = String(deal?.steamAppID || '').trim();
+      const directUrl = storeMeta.key === 'steam' && /^\d+$/.test(steamAppId)
+        ? `https://store.steampowered.com/app/${steamAppId}/`
+        : links[storeMeta.key];
+      bestMatchByStore[storeMeta.key] = matchScore;
+      stores[storeMeta.key] = {
+        shopId: storeMeta.id,
+        shopName: storeMeta.label,
+        key: storeMeta.key,
+        label: storeMeta.label,
+        price: amount,
+        amount,
+        regular,
+        cut,
+        currency,
+        formattedPrice: formatPrice(amount, currency),
+        formattedRegular: formatPrice(regular, currency),
+        url: safeStoreUrl(directUrl) || links[storeMeta.key],
+      };
+    }
+  }
+
+  const hasAnyStore = Boolean(stores.steam || stores.gog || stores.epic);
+  const historyLowAmount = Number.isFinite(lowestUsd) ? Math.round(lowestUsd * rate * 100) / 100 : null;
+  return {
+    found: hasAnyStore,
+    consoleOnly: false,
+    source: 'public-stores',
+    itadId: null,
+    country: cleanCountry,
+    currency,
+    bestStore: pickBestStore(stores),
+    historyLow: historyLowAmount !== null ? {
+      amount: historyLowAmount,
+      currency,
+      formattedAmount: formatPrice(historyLowAmount, currency),
+    } : null,
+    stores,
+    searchLinks: links,
+    fetchedAt: new Date(now).toISOString(),
+  };
+}
+
+export async function lookupPublicStorePrices({
+  title = '',
+  country = 'US',
+  request = (...args) => globalThis.fetch(...args),
+  now = Date.now(),
+  signal,
+  rawDealsCache = null,
+} = {}) {
+  const cleanTitle = normalizeTitle(title);
+  const queryTitle = stripTitleNoise(cleanTitle) || cleanTitle;
+  if (!queryTitle) return null;
+
+  const cacheKey = queryTitle.toLowerCase();
+  let rawDeals = rawDealsCache?.get(cacheKey) || null;
+
+  if (!rawDeals) {
+    const url = new URL(PUBLIC_DEALS_URL);
+    url.search = new URLSearchParams({
+      title: queryTitle,
+      storeID: '1,7,25',
+      pageSize: '60',
+    });
+    const options = {
+      method: 'GET',
+      referrerPolicy: 'no-referrer',
+      signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(10000)]) : AbortSignal.timeout(10000),
+    };
+    // Node's default 'node' User-Agent is rejected by CheapShark; browsers send their native UA automatically.
+    if (typeof window === 'undefined') {
+      options.headers = {
+        Accept: 'application/json',
+        'User-Agent': 'PlayNext/2.3 (+https://github.com/SchunckLeonardo/PlayNext)',
+      };
+    }
+    const response = await request(url.href, options);
+    if (!response?.ok) return null;
+    const data = await response.json();
+    if (!Array.isArray(data)) return null;
+    rawDeals = data;
+    rawDealsCache?.set(cacheKey, rawDeals);
+  }
+
+  return normalizePublicDeals(rawDeals, { title: cleanTitle, country, now });
+}
+
 export class ItadPriceService {
-  constructor({
-    apiKey = (typeof process !== 'undefined' && process?.env ? (process.env.ITAD_API_KEY || process.env.ISTHEREANYDEAL_API_KEY || '') : ''),
-    request = (...args) => globalThis.fetch(...args),
-    now = () => Date.now(),
-    windowMs = ITAD_WINDOW_MS,
-    maxUpstreamCalls = ITAD_SAFE_UPSTREAM_BUDGET,
-    clientWindowMax = 25,
-    clientBurstMax = 6,
-    clientBurstMs = 10_000,
-    priceTtlMs = 30 * 60 * 1000,
-    negativeTtlMs = 6 * 60 * 60 * 1000,
-    idTtlMs = 7 * 24 * 60 * 60 * 1000,
-    maxCacheEntries = 500,
-    maxTrackedClients = 2000,
-  } = {}) {
+  constructor(options = {}) {
+    const {
+      apiKey = (typeof process !== 'undefined' && process?.env ? (process.env.ITAD_API_KEY || process.env.ISTHEREANYDEAL_API_KEY || '') : ''),
+      request = (...args) => globalThis.fetch(...args),
+      now = () => Date.now(),
+      windowMs = ITAD_WINDOW_MS,
+      maxUpstreamCalls = ITAD_SAFE_UPSTREAM_BUDGET,
+      clientWindowMax = 25,
+      clientBurstMax = 6,
+      clientBurstMs = 10_000,
+      priceTtlMs = 30 * 60 * 1000,
+      negativeTtlMs = 6 * 60 * 60 * 1000,
+      idTtlMs = 7 * 24 * 60 * 60 * 1000,
+      maxCacheEntries = 500,
+      maxTrackedClients = 2000,
+      enablePublicFallback = options.request === undefined,
+    } = options;
     this.apiKey = String(apiKey || '').trim();
     this.request = request;
     this.now = now;
+    this.enablePublicFallback = Boolean(enablePublicFallback);
     this.windowMs = Math.max(1000, Number(windowMs) || ITAD_WINDOW_MS);
     // Never allow upstream budget to exceed ITAD's 100 requests / 5 minutes limit.
     this.maxUpstreamCalls = Math.min(ITAD_API_WINDOW_LIMIT, Math.max(1, Number(maxUpstreamCalls) || ITAD_SAFE_UPSTREAM_BUDGET));
@@ -583,6 +804,7 @@ export class ItadPriceService {
     this.clientBuckets = new Map();
     this.idCache = new Map();
     this.priceCache = new Map();
+    this.publicRawCache = new Map();
     this.inFlight = new Map();
   }
 
@@ -737,11 +959,58 @@ export class ItadPriceService {
       return demoSnapshot;
     }
 
-    // 3. When ITAD_API_KEY is not configured, return demo reference snapshot or unconfigured state without network spam.
+    // 3. When ITAD_API_KEY is not configured, serve reference catalog or live public storefront deals.
     if (!this.apiKey) {
       if (demoSnapshot) {
         this.setBoundedMap(this.priceCache, cacheKey, { data: demoSnapshot, expiresAt: now + this.priceTtlMs });
         return demoSnapshot;
+      }
+      if (this.enablePublicFallback) {
+        if (this.inFlight.has(cacheKey)) return this.inFlight.get(cacheKey);
+        const publicTask = (async () => {
+          await Promise.resolve();
+          try {
+            const strippedKey = (stripTitleNoise(cleanTitle) || cleanTitle).toLowerCase();
+            if (!this.publicRawCache.has(strippedKey)) {
+              this.reserveUpstreamQuota(1, this.now());
+              this.recordUpstreamCall(this.now());
+            }
+            const publicResult = await lookupPublicStorePrices({
+              title: cleanTitle,
+              country: cleanCountry,
+              request: this.request,
+              now: this.now(),
+              signal,
+              rawDealsCache: this.publicRawCache,
+            });
+            if (publicResult?.found) {
+              this.setBoundedMap(this.priceCache, cacheKey, {
+                data: publicResult,
+                expiresAt: this.now() + this.priceTtlMs,
+              });
+              return publicResult;
+            }
+          } catch (error) {
+            if (signal?.aborted) throw error;
+          } finally {
+            this.inFlight.delete(cacheKey);
+          }
+          return {
+            found: false,
+            consoleOnly: false,
+            source: 'unconfigured',
+            itadId: null,
+            country: cleanCountry,
+            currency: cleanCountry === 'BR' ? 'BRL' : 'USD',
+            bestStore: null,
+            historyLow: null,
+            stores: { steam: null, gog: null, epic: null },
+            searchLinks: fallbackStoreLinks(cleanTitle),
+            fetchedAt: new Date(this.now()).toISOString(),
+          };
+        })();
+        this.inFlight.set(cacheKey, publicTask);
+        return publicTask;
       }
       return {
         found: false,
@@ -774,12 +1043,38 @@ export class ItadPriceService {
         let itadId = idEntry?.id || null;
         if (!itadId) {
           this.reserveUpstreamQuota(1, this.now());
-          const lookupData = await this.callItad('games/lookup/v1', {
+          let lookupData = await this.callItad('games/lookup/v1', {
             method: 'GET',
             params: { title: cleanTitle },
             signal,
           });
+          const strippedTitle = stripTitleNoise(cleanTitle);
+          if ((!lookupData?.found || typeof lookupData?.game?.id !== 'string') && strippedTitle && strippedTitle !== cleanTitle) {
+            this.reserveUpstreamQuota(1, this.now());
+            lookupData = await this.callItad('games/lookup/v1', {
+              method: 'GET',
+              params: { title: strippedTitle },
+              signal,
+            });
+          }
           if (!lookupData?.found || typeof lookupData?.game?.id !== 'string') {
+            if (this.enablePublicFallback) {
+              const publicFallback = await lookupPublicStorePrices({
+                title: cleanTitle,
+                country: cleanCountry,
+                request: this.request,
+                now: this.now(),
+                signal,
+                rawDealsCache: this.publicRawCache,
+              }).catch(() => null);
+              if (publicFallback?.found) {
+                this.setBoundedMap(this.priceCache, cacheKey, {
+                  data: publicFallback,
+                  expiresAt: this.now() + this.priceTtlMs,
+                });
+                return publicFallback;
+              }
+            }
             const notFound = {
               found: false,
               consoleOnly: false,
@@ -908,7 +1203,7 @@ export async function handlePriceApiRequest(req, res, service) {
   }
 }
 
-// Browser-side client with in-memory cache, debounce-friendly AbortSignal support, and graceful static-host fallback.
+// Browser-side client with in-memory cache, debounce-friendly AbortSignal support, and live static-host fallback.
 export class PriceClient {
   constructor({
     endpoint = './api/prices',
@@ -916,15 +1211,22 @@ export class PriceClient {
     request = (...args) => globalThis.fetch(...args),
     now = () => Date.now(),
     ttlMs = 15 * 60 * 1000,
+    windowMs = ITAD_WINDOW_MS,
+    maxPublicCalls = ITAD_SAFE_UPSTREAM_BUDGET,
   } = {}) {
     this.endpoint = endpoint;
     this.country = normalizeCountry(country);
     this.request = request;
     this.now = now;
     this.ttlMs = ttlMs;
+    this.windowMs = Math.max(1000, Number(windowMs) || ITAD_WINDOW_MS);
+    this.maxPublicCalls = Math.min(ITAD_API_WINDOW_LIMIT, Math.max(1, Number(maxPublicCalls) || ITAD_SAFE_UPSTREAM_BUDGET));
     this.cache = new Map();
+    this.publicRawCache = new Map();
+    this.publicTimestamps = [];
     this.inFlight = new Map();
     this.cooldownUntil = 0;
+    this.backendUnavailableUntil = 0;
   }
 
   setCountry(country) {
@@ -944,6 +1246,68 @@ export class PriceClient {
     return null;
   }
 
+  isConsoleOnlyGame(game) {
+    return Array.isArray(game?.platforms) && game.platforms.length > 0 && !game.platforms.includes('pc');
+  }
+
+  async resolveFallbackSnapshot(game, signal, fallbackSource = 'fallback') {
+    const now = this.now();
+    const demo = demoPriceSnapshot({ slug: game.slug, title: game.name, country: this.country, now });
+    if (demo) return demo;
+
+    if (this.isConsoleOnlyGame(game)) {
+      return {
+        found: false,
+        consoleOnly: true,
+        source: 'platforms',
+        itadId: null,
+        country: this.country,
+        currency: this.country === 'BR' ? 'BRL' : 'USD',
+        bestStore: null,
+        historyLow: null,
+        stores: { steam: null, gog: null, epic: null },
+        searchLinks: fallbackStoreLinks(game.name),
+        fetchedAt: new Date(now).toISOString(),
+      };
+    }
+
+    const strippedKey = (stripTitleNoise(game.name) || normalizeTitle(game.name)).toLowerCase();
+    const hasCachedRaw = this.publicRawCache.has(strippedKey);
+    const cutoff = now - this.windowMs;
+    while (this.publicTimestamps.length && this.publicTimestamps[0] <= cutoff) {
+      this.publicTimestamps.shift();
+    }
+
+    if (hasCachedRaw || this.publicTimestamps.length < this.maxPublicCalls) {
+      if (!hasCachedRaw) this.publicTimestamps.push(now);
+      try {
+        const publicResult = await lookupPublicStorePrices({
+          title: game.name,
+          country: this.country,
+          request: this.request,
+          now: this.now(),
+          signal,
+          rawDealsCache: this.publicRawCache,
+        });
+        if (publicResult?.found) return publicResult;
+      } catch (error) {
+        if (signal?.aborted) throw error;
+      }
+    }
+
+    return {
+      found: false,
+      consoleOnly: false,
+      source: fallbackSource,
+      country: this.country,
+      currency: this.country === 'BR' ? 'BRL' : 'USD',
+      bestStore: null,
+      historyLow: null,
+      stores: { steam: null, gog: null, epic: null },
+      searchLinks: fallbackStoreLinks(game.name),
+    };
+  }
+
   async forGame(game, signal) {
     if (!game?.name) return null;
     const now = this.now();
@@ -955,7 +1319,7 @@ export class PriceClient {
     if (this.cooldownUntil > now) {
       return demoPriceSnapshot({ slug: game.slug, title: game.name, country: this.country, now }) || {
         found: false,
-        consoleOnly: false,
+        consoleOnly: this.isConsoleOnlyGame(game),
         source: 'cooldown',
         country: this.country,
         currency: this.country === 'BR' ? 'BRL' : 'USD',
@@ -971,6 +1335,14 @@ export class PriceClient {
     const task = (async () => {
       await Promise.resolve();
       try {
+        // When hosted on a static site (e.g., ChatGPT Sites where ./api/prices returned 404),
+        // skip redundant 404 hops during the backoff window and resolve via live store fallback.
+        if (this.backendUnavailableUntil > this.now()) {
+          const fallback = await this.resolveFallbackSnapshot(game, signal, 'fallback');
+          this.cache.set(key, { data: fallback, expiresAt: this.now() + (fallback.found ? this.ttlMs : 5 * 60 * 1000) });
+          return fallback;
+        }
+
         const params = new URLSearchParams({
           title: normalizeTitle(game.name),
           slug: normalizeSlug(game.slug),
@@ -995,7 +1367,7 @@ export class PriceClient {
           this.cooldownUntil = this.now() + retrySeconds * 1000;
           const fallback = demoPriceSnapshot({ slug: game.slug, title: game.name, country: this.country, now: this.now() }) || {
             found: false,
-            consoleOnly: false,
+            consoleOnly: this.isConsoleOnlyGame(game),
             source: 'cooldown',
             country: this.country,
             currency: this.country === 'BR' ? 'BRL' : 'USD',
@@ -1008,37 +1380,30 @@ export class PriceClient {
         }
 
         if (!response.ok) {
-          const fallback = demoPriceSnapshot({ slug: game.slug, title: game.name, country: this.country, now: this.now() }) || {
-            found: false,
-            consoleOnly: false,
-            source: 'fallback',
-            country: this.country,
-            currency: this.country === 'BR' ? 'BRL' : 'USD',
-            bestStore: null,
-            historyLow: null,
-            stores: { steam: null, gog: null, epic: null },
-            searchLinks: fallbackStoreLinks(game.name),
-          };
-          this.cache.set(key, { data: fallback, expiresAt: this.now() + 5 * 60 * 1000 });
+          if (response.status === 404 || response.status === 405) {
+            this.backendUnavailableUntil = this.now() + 10 * 60 * 1000;
+          }
+          const fallback = await this.resolveFallbackSnapshot(game, signal, 'fallback');
+          this.cache.set(key, { data: fallback, expiresAt: this.now() + (fallback.found ? this.ttlMs : 5 * 60 * 1000) });
           return fallback;
         }
 
         const data = await response.json();
+        if (!data?.found && !data?.consoleOnly) {
+          const fallback = await this.resolveFallbackSnapshot(game, signal, data?.source || 'fallback');
+          if (fallback?.found || fallback?.consoleOnly) {
+            this.cache.set(key, { data: fallback, expiresAt: this.now() + this.ttlMs });
+            return fallback;
+          }
+        }
         this.cache.set(key, { data, expiresAt: this.now() + this.ttlMs });
         return data;
       } catch (error) {
         if (signal?.aborted) throw error;
-        const fallback = demoPriceSnapshot({ slug: game.slug, title: game.name, country: this.country, now: this.now() }) || {
-          found: false,
-          consoleOnly: false,
-          source: 'fallback',
-          country: this.country,
-          currency: this.country === 'BR' ? 'BRL' : 'USD',
-          bestStore: null,
-          historyLow: null,
-          stores: { steam: null, gog: null, epic: null },
-          searchLinks: fallbackStoreLinks(game.name),
-        };
+        const fallback = await this.resolveFallbackSnapshot(game, signal, 'fallback');
+        if (fallback?.found || fallback?.consoleOnly) {
+          this.cache.set(key, { data: fallback, expiresAt: this.now() + this.ttlMs });
+        }
         return fallback;
       } finally {
         this.inFlight.delete(key);

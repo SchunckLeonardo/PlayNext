@@ -67,9 +67,20 @@ try {
   assert.equal(pricePayload.found, true);
   assert.ok(pricePayload.stores && 'steam' in pricePayload.stores && 'gog' in pricePayload.stores && 'epic' in pricePayload.stores);
   assert.ok(pricePayload.stores.steam || pricePayload.stores.gog || pricePayload.stores.epic);
+  const nonDemoPriceRes = await fetch('http://127.0.0.1:4173/api/prices?title=Subnautica&slug=subnautica&country=US', {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 Chrome/125.0.0.0 Safari/537.36',
+      [CLIENT_HEADER_NAME]: CLIENT_HEADER_VALUE,
+      [PROOF_HEADER_NAME]: computeBotProof('Subnautica', 'US', Math.floor(Date.now() / 60000)),
+    },
+  });
+  assert.equal(nonDemoPriceRes.status, 200);
+  const nonDemoPayload = await nonDemoPriceRes.json();
+  assert.equal(nonDemoPayload.found, true, 'Non-demo RAWG titles must resolve live store prices.');
+  assert.ok(nonDemoPayload.stores.steam?.price > 0 || nonDemoPayload.stores.gog?.price > 0 || nonDemoPayload.stores.epic?.price > 0);
   const html = await (await fetch('http://127.0.0.1:4173/')).text();
   assert.ok(html.includes('LOCAL ENVIRONMENT') && html.includes('Sign in with local test account'));
-  console.log('PASS: registered local Auth user, three encrypted choices, revision conflict, logout/login restore, anonymous denial, ITAD price endpoint + bot protection, and local-only frontend configuration.');
+  console.log('PASS: registered local Auth user, three encrypted choices, revision conflict, logout/login restore, anonymous denial, ITAD + live store price fallback + bot protection, and local-only frontend configuration.');
 } finally {
   const restored = await client.rpc('playnext_save', { p_state: original, p_revision: revision });
   assert.equal(restored.error, null, 'Restore the fixture state after the smoke test.');

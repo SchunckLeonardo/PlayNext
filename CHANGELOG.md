@@ -1,6 +1,12 @@
 # Changelog
 
-## [2.3.0] — Unreleased
+## [2.3.1] — Unreleased
+
+- Add live public storefront price resolution (`lookupPublicStorePrices`) for Steam, GOG, and Epic Games when running on static hosts without `/api/prices` (such as ChatGPT Sites) or in local environments without `ITAD_API_KEY`, protected by the same 5-minute sliding window quota, Singleflight deduplication, and in-memory cache.
+- Normalize RAWG disambiguation suffixes (e.g., `(2018)`, `(2013)`, `- Episode 1`) and match canonical full-game editions (`Remastered`, `Ultimate Edition`, `The Final Cut`, `GOTY`) while filtering out DLC, soundtracks, and add-ons.
+- Detect console-only RAWG titles directly from platform metadata and include Free-to-Play PC storefront listings (`Counter-Strike 2`, `Dota 2`, `Apex Legends`, `Fortnite`, `Warframe`, `Destiny 2`, `Rocket League`, `The Sims 4`, `Overwatch 2`, `Path of Exile`, and others).
+
+## [2.3.0] — 2026-10-19
 
 - Keep the user signed in across page reloads and return visits with automatic `access_token` and `refresh_token` persistence and rotation (`persistSession: true`, `autoRefreshToken: true`).
 - Seal Supabase session tokens in IndexedDB (`dist/session-store.js`) using AES-GCM (256-bit) under a non-extractable WebCrypto device key (`extractable: false`), never writing tokens or keys to `localStorage` or `sessionStorage`.

@@ -8,6 +8,7 @@ import {
   ITAD_API_WINDOW_LIMIT,
   ITAD_SAFE_UPSTREAM_BUDGET,
   ITAD_SHOPS,
+  PUBLIC_DEALS_URL,
   CLIENT_HEADER_NAME,
   CLIENT_HEADER_VALUE,
   PROOF_HEADER_NAME,
@@ -19,6 +20,9 @@ import {
   handlePriceApiRequest,
   safeStoreUrl,
   formatStorePrice,
+  stripTitleNoise,
+  scoreDealTitle,
+  demoPriceSnapshot,
 } from '../dist/prices.js';
 
 const jsonResponse = (body, status = 200) => ({
@@ -373,3 +377,121 @@ test('PriceClient caches in memory, switches currency country, respects 429 cool
   const res = await nativeClient.forGame({ id: 274755, slug: 'hades-2018', name: 'Hades' });
   assert.equal(res.stores.steam.price, 12.49);
 });
+
+test('stripTitleNoise and scoreDealTitle handle RAWG year suffixes, canonical editions, and reject DLC/soundtracks', () => {
+  assert.equal(stripTitleNoise('God of War (2018)'), 'God of War');
+  assert.equal(stripTitleNoise('Tomb Raider (2013)'), 'Tomb Raider');
+  assert.equal(stripTitleNoise('Life is Strange - Episode 1'), 'Life is Strange');
+
+  assert.equal(scoreDealTitle('God of War (2018)', 'God of War'), 100);
+  assert.equal(scoreDealTitle('Disco Elysium', 'Disco Elysium - The Final Cut'), 90);
+  assert.equal(scoreDealTitle('Control', 'Control Ultimate Edition'), 90);
+  assert.equal(scoreDealTitle('The Witcher 3: Wild Hunt', 'The Witcher 3: Wild Hunt Remastered'), 90);
+  assert.equal(scoreDealTitle('Hollow Knight', 'Hollow Knight - Official Soundtrack'), 0);
+  assert.equal(scoreDealTitle('Tomb Raider (2013)', 'Dead by Daylight: Tomb Raider'), 0);
+  assert.equal(scoreDealTitle('DOOM (2016)', 'Deponia Doomsday'), 0);
+});
+
+test('PriceClient falls back to live public store deals when static hosting returns 404 or backend is unconfigured', async () => {
+  let clock = 1_700_000_000_000;
+  const requestedUrls = [];
+  const client = new PriceClient({
+    country: 'US',
+    now: () => clock,
+    request: async url => {
+      const href = String(url);
+      requestedUrls.push(href);
+      if (href.startsWith('./api/prices')) {
+        return jsonResponse({ error: 'Not found' }, 404);
+      }
+      if (href.startsWith(PUBLIC_DEALS_URL)) {
+        return jsonResponse([
+          { title: 'Disco Elysium - Soundtrack', storeID: '7', salePrice: '3.99', normalPrice: '14.99', savings: '73' },
+          { title: 'Disco Elysium - The Final Cut', storeID: '7', salePrice: '9.99', normalPrice: '39.99', savings: '75', steamAppID: '632470' },
+          { title: 'Disco Elysium - The Final Cut', storeID: '1', salePrice: '14.99', normalPrice: '39.99', savings: '62.5', steamAppID: '632470' },
+          { title: 'Disco Elysium - The Final Cut', storeID: '25', salePrice: '11.99', normalPrice: '39.99', savings: '70', steamAppID: null },
+        ]);
+      }
+      throw new Error(`Unexpected URL: ${href}`);
+    },
+  });
+
+  const rawgGame = { id: 28153, slug: 'disco-elysium', name: 'Disco Elysium', platforms: ['pc', 'playstation4'] };
+  const usSnapshot = await client.forGame(rawgGame);
+  assert.equal(usSnapshot.found, true);
+  assert.equal(usSnapshot.source, 'public-stores');
+  assert.equal(usSnapshot.bestStore, 'gog');
+  assert.equal(usSnapshot.stores.gog.price, 9.99);
+  assert.equal(usSnapshot.stores.gog.cut, 75);
+  assert.equal(usSnapshot.stores.steam.price, 14.99);
+  assert.equal(usSnapshot.stores.steam.url, 'https://store.steampowered.com/app/632470/');
+  assert.equal(usSnapshot.stores.epic.price, 11.99);
+  assert.equal(requestedUrls.length, 2); // 1st: ./api/prices (404), 2nd: CheapShark deals
+
+  // Switching to BR reuses cached raw deals without any extra network call and converts to BRL.
+  client.setCountry('BR');
+  const brSnapshot = await client.forGame(rawgGame);
+  assert.equal(brSnapshot.found, true);
+  assert.equal(brSnapshot.currency, 'BRL');
+  assert.equal(brSnapshot.bestStore, 'gog');
+  assert.ok(brSnapshot.stores.gog.price > 50);
+  assert.equal(requestedUrls.length, 2);
+
+  // Console-only RAWG game (no 'pc' in platforms) resolves immediately without network calls.
+  const consoleGame = { id: 99911, slug: 'bloodborne', name: 'Bloodborne', platforms: ['playstation4'] };
+  const consoleSnapshot = await client.forGame(consoleGame);
+  assert.equal(consoleSnapshot.consoleOnly, true);
+  assert.equal(consoleSnapshot.found, false);
+  assert.equal(requestedUrls.length, 2);
+
+  // Free-to-Play PC titles resolve with price 0 ('Free').
+  const f2p = demoPriceSnapshot({ slug: 'counter-strike-2', title: 'Counter-Strike 2', country: 'US', now: clock });
+  assert.equal(f2p.found, true);
+  assert.equal(f2p.stores.steam.price, 0);
+  assert.equal(f2p.stores.steam.formattedPrice, 'Free');
+});
+
+test('ItadPriceService retries stripped RAWG year titles on ITAD and serves live public fallback when unconfigured', async () => {
+  const itadCalls = [];
+  const serviceWithKey = new ItadPriceService({
+    apiKey: 'itad-test-key',
+    request: async url => {
+      const parsed = new URL(url);
+      itadCalls.push(parsed.pathname + parsed.search);
+      if (parsed.pathname === '/games/lookup/v1') {
+        if (parsed.searchParams.get('title') === 'God of War (2018)') {
+          return jsonResponse({ found: false });
+        }
+        if (parsed.searchParams.get('title') === 'God of War') {
+          return jsonResponse({ found: true, game: { id: 'uuid-gow-2018' } });
+        }
+      }
+      if (parsed.pathname === '/games/prices/v3') {
+        return jsonResponse([{ id: 'uuid-gow-2018', deals: [{ shop: { id: 61, name: 'Steam' }, price: { amount: 19.99, currency: 'USD' }, regular: { amount: 49.99, currency: 'USD' }, cut: 60, url: 'https://store.steampowered.com/app/1593500/God_of_War/' }] }]);
+      }
+      throw new Error(`Unexpected URL: ${url}`);
+    },
+  });
+
+  const gow = await serviceWithKey.getPrices({ title: 'God of War (2018)', slug: 'god-of-war-2', country: 'US', clientId: '10.0.0.9' });
+  assert.equal(gow.found, true);
+  assert.equal(gow.stores.steam.price, 19.99);
+  assert.equal(itadCalls.length, 3); // 1st lookup (with year), 2nd lookup (stripped year), 3rd prices/v3
+
+  // Unconfigured service with enablePublicFallback: true resolves non-demo RAWG games via public storefront deals.
+  const keylessService = new ItadPriceService({
+    apiKey: '',
+    enablePublicFallback: true,
+    request: async url => {
+      assert.ok(String(url).startsWith(PUBLIC_DEALS_URL));
+      return jsonResponse([
+        { title: 'Subnautica', storeID: '1', salePrice: '14.99', normalPrice: '29.99', savings: '50', steamAppID: '264710' },
+      ]);
+    },
+  });
+  const subnautica = await keylessService.getPrices({ title: 'Subnautica', slug: 'subnautica', country: 'US', clientId: '10.0.0.10' });
+  assert.equal(subnautica.found, true);
+  assert.equal(subnautica.source, 'public-stores');
+  assert.equal(subnautica.stores.steam.price, 14.99);
+});
+
