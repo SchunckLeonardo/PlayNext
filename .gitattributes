@@ -1,0 +1,3 @@
+# Preserve upstream whitespace inside the official minified bundle's string literals.
+dist/vendor/supabase-2.118.0.js whitespace=-blank-at-eol
+dist/vendor/* linguist-vendored=true
