@@ -584,13 +584,6 @@ export class ItadPriceService {
     this.idCache = new Map();
     this.priceCache = new Map();
     this.inFlight = new Map();
-
-    // Seed known ITAD UUIDs for the demo catalog so live lookups require only 1 upstream call (/games/prices/v3).
-    for (const [slug, entry] of Object.entries(DEMO_STORE_CATALOG)) {
-      if (entry.itadId) {
-        this.idCache.set(slug, { id: entry.itadId, expiresAt: Infinity });
-      }
-    }
   }
 
   pruneUpstream(now = this.now()) {
