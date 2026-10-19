@@ -8,14 +8,17 @@ Código: https://github.com/SchunckLeonardo/PlayNext
 
 ## Executar
 
-Node.js 22+; sem instalação ou build. O SDK oficial Supabase JS 2.118.0 está versionado em `dist/vendor/`, com sua licença.
+Node.js 24; sem etapa de build. O SDK oficial Supabase JS 2.118.0 está versionado em `dist/vendor/`, com sua licença, e inventariado no lockfile para SCA. Para desenvolvimento e QA, use o ambiente Docker isolado.
 
 ```sh
-npm run dev
-# http://127.0.0.1:4173
-npm test
-npm run check
+npm ci --ignore-scripts
+npm run local:up
+# http://127.0.0.1:4173 — conta sintética local
+npm run local:test
+npm run local:down
 ```
+
+Guias: [Docker e conta de teste](docs/LOCAL.md), [SAST/SCA gratuitos](docs/SECURITY-PIPELINE.md) e [releases com aprovação](docs/RELEASES.md). A prévia simples `npm run dev` usa a configuração de produção; para testar alterações e dados use Docker.
 
 Para outra hospedagem estática, publique `dist/` e atualize as URLs permitidas no Supabase Auth. Produção requer HTTPS.
 

@@ -1,0 +1,54 @@
+# Local Docker only. Do not push this Auth configuration to production.
+project_id = "playnext-local"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+[db.migrations]
+enabled = true
+schema_paths = []
+
+[db.seed]
+enabled = false
+sql_paths = []
+
+[realtime]
+enabled = false
+[studio]
+enabled = false
+[local_smtp]
+enabled = false
+[storage]
+enabled = false
+[edge_runtime]
+enabled = false
+[analytics]
+enabled = false
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:4173"
+additional_redirect_urls = []
+jwt_expiry = 3600
+enable_signup = false
+enable_anonymous_sign_ins = false
+enable_manual_linking = false
+minimum_password_length = 12
+
+[auth.email]
+# Enable the email provider only locally; global public signup stays disabled.
+enable_signup = true
+enable_confirmations = false
+double_confirm_changes = true
+
+[auth.external.google]
+enabled = false
