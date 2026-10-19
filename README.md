@@ -51,11 +51,22 @@ Requests go directly to the official API over HTTPS using the visitor's key. The
 
 The transport preserves the native `fetch` context to prevent `Illegal invocation`. Invalid responses may not include CORS headers; in those cases the browser only permits a generic key/connection error. We do not claim to have validated a real authenticated request without a valid RAWG key entered by the visitor in the app.
 
-Sources: [RAWG API](https://rawg.io/apidocs), [Vault](https://supabase.com/docs/guides/database/vault), [Google Auth](https://supabase.com/docs/guides/auth/social-login/auth-google), [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [Brazilian data subject rights](https://www.gov.br/anpd/pt-br/assuntos/titular-de-dados-1/direito-dos-titulares).
+## Store prices (IsThereAnyDeal)
+
+PlayNext displays PC store prices for **Steam** (shop `61`), **GOG** (shop `35`), and **Epic Games** (shop `16`) on the discovery card and inside the game details dialog, with one-click switching between `USD ($)` and `BRL (R$)` and all-time low tracking.
+
+- **GitHub Actions / Backend Secret**: Configure the repository secret named `ITAD_API_KEY` with your IsThereAnyDeal API key. The secret stays on the backend (`server.mjs` / `local/server.mjs`) and is never bundled into `dist/config.js` or exposed to browser network tools. When `ITAD_API_KEY` is absent in local/demo environments, the endpoint serves curated reference prices for the demo catalog.
+- **100 req / 5 min Rate-Limit Protection**: IsThereAnyDeal enforces a sliding window of **100 requests per 5 minutes (300 seconds)**. PlayNext protects the backend with:
+  1. A global 5-minute sliding window cap (`ITAD_SAFE_UPSTREAM_BUDGET = 80` upstream calls per 300s, hard-capped below 100) with stale-while-error fallback.
+  2. Per-IP burst limiting (6 req / 10s) and per-IP 5-minute window limiting (25 req / 5 min).
+  3. Singleflight request coalescing (concurrent requests for the same game share a single upstream lookup), 7-day ITAD game UUID caching, 30-minute price caching, and 220ms client debounce on card swipes.
+- **Anti-Bot Shield**: `/api/prices` blocks non-`GET` methods, honeypot parameters (`?website=`, `?bot=`), automated scraper/CLI/headless User-Agents, `Sec-Fetch-Site: cross-site` requests, and requests missing a valid 1-minute bucket `X-PlayNext-Proof` challenge header.
+
+Sources: [RAWG API](https://rawg.io/apidocs), [IsThereAnyDeal API](https://docs.isthereanydeal.com/), [Vault](https://supabase.com/docs/guides/database/vault), [Google Auth](https://supabase.com/docs/guides/auth/social-login/auth-google), [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [Brazilian data subject rights](https://www.gov.br/anpd/pt-br/assuntos/titular-de-dados-1/direito-dos-titulares).
 
 ## Project layout
 
-- `dist/app.js`, `model.js`, `api.js`: discovery, choices, and RAWG.
+- `dist/app.js`, `model.js`, `api.js`, `prices.js`: discovery, choices, RAWG, and IsThereAnyDeal store price service/client.
 - `dist/account.js`, `account-ui.js`, `oauth.js`, `auth-callback.*`, `config.js`: sync, Google sign-in, and account management.
 - `dist/index.html`, `styles.css`, `account.css`: responsive interface.
 - `dist/assets/tutorial/`: public RAWG screenshots and the empty PlayNext form.
@@ -64,3 +75,4 @@ Sources: [RAWG API](https://rawg.io/apidocs), [Vault](https://supabase.com/docs/
 - `tests/`: network-independent regressions; the official SDK is exercised with instrumented storage.
 - `design-system/MASTER.md`: visual direction based on UI UX Pro Max.
 - `VALIDATION.md`: current evidence and limitations.
+

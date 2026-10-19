@@ -1,5 +1,16 @@
 # Validation — 2026-10-19
 
+## v2.2.0 store prices (IsThereAnyDeal), bot protection, and English localization
+
+- **IsThereAnyDeal store integration (`dist/prices.js`, `server.mjs`, `local/server.mjs`)**: Queries official IsThereAnyDeal endpoints (`GET /games/lookup/v1` and `POST /games/prices/v3` with shop IDs `61` Steam, `35` GOG, and `16` Epic Games). Normalizes lowest prices, discount cuts, regular prices, store URLs (`safeStoreUrl`), and historical lows (`historyLow`), with instant `USD ($)` / `BRL (R$)` currency switching on the discovery card and inside the game details dialog.
+- **GitHub Secret (`ITAD_API_KEY`)**: The backend reads `process.env.ITAD_API_KEY` (forwarded in `.github/workflows/security.yml` and `scripts/local.mjs` when present) and never exposes the secret in `dist/config.js`, browser requests, or error messages. When `ITAD_API_KEY` is absent in local/demo environments, the service falls back to verified reference data for the 12 demo titles.
+- **Anti-bot & 100 req / 5 min sliding window protection**:
+  - Global sliding window rate limiter (`ITAD_WINDOW_MS = 300_000`, `ITAD_API_WINDOW_LIMIT = 100`, `ITAD_SAFE_UPSTREAM_BUDGET = 80`) prevents the backend from ever exceeding IsThereAnyDeal's 100 requests per 5 minutes quota, serving stale cached or reference prices if the budget is reached.
+  - Per-IP burst limiter (6 req / 10s) and per-IP 5-minute window limiter (25 req / 5 min) block rapid scraping before any upstream call is made.
+  - Request coalescing (`Singleflight`), 7-day ITAD UUID cache, 30-minute price cache, 6-hour negative cache, and 220ms frontend swipe debounce eliminate duplicate upstream requests.
+  - `validateBotRequest` blocks non-GET methods (`405`), honeypot parameters (`403`), scraper/CLI/headless User-Agents (`403`), `Sec-Fetch-Site: cross-site` (`403`), and missing/expired 1-minute bucket `X-PlayNext-Proof` tokens (`403`).
+- **Automated checks & Docker smoke**: `npm run check` (27 modules), `npm test` (47/47 passing tests), `npm run verify:vendor`, `npm audit --audit-level=high` (0 vulnerabilities), and full Docker verification (`npm run local:up`, `npm run local:test` verifying local Auth, Vault, `/api/prices` bot blocking `403` + valid proof `200`, and `npm run local:down`) all passed.
+
 ## v2.1.0 security and Docker review
 
 - SAST: CodeQL `security-extended`; the severity gate covers rules in SARIF drivers and query packs, including results without a `level`. Reports missing metadata fail closed. A real SARIF result for `js/insecure-download` with severity 8.1 verified that the gate exits with status 1. The smoke test checks configuration through a health endpoint without downloading the JavaScript module.

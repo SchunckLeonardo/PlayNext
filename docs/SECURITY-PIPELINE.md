@@ -10,7 +10,7 @@ The **Security** workflow runs on pull requests, pushes to `main`, and manual di
 | SDK integrity | `npm run verify:vendor` | Bundle changes or a version mismatch with the npm package and lockfile |
 | Regression | Node test runner + local Docker/Supabase | Syntax, unit, local Auth, Vault, isolation, or sync failures |
 
-CodeQL, Dependency Review, and standard Linux runners are free for this **public** repository. Actions uses the automatic `GITHUB_TOKEN` with minimum permissions; no one needs to create or copy an API key. The pipeline does not use SonarCloud, Snyk, or paid plans. If the repository becomes private, recheck availability and licensing before relying on the same terms.
+CodeQL, Dependency Review, and standard Linux runners are free for this **public** repository. Actions uses the automatic `GITHUB_TOKEN` with minimum permissions; no one needs to create or copy an API key for SAST or SCA. If the maintainer configures the optional `ITAD_API_KEY` GitHub Actions secret for IsThereAnyDeal store prices, it is passed only to the local Docker integration environment and is never required for SAST, SCA, or unit tests. The pipeline does not use SonarCloud, Snyk, or paid plans. If the repository becomes private, recheck availability and licensing before relying on the same terms.
 
 The Supabase SDK in `dist/vendor` is also declared in `package.json` and `package-lock.json`, including its five components. The verifier requires matching versions and the expected SHA-256 of the official UMD. This prevents SCA from returning an empty result while overlooking the browser library. The upstream bundle is excluded from first-party source SAST and covered by SCA and integrity checks.
 

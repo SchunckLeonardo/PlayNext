@@ -16,5 +16,6 @@ export function localSettings(env) {
   if (env.LOCAL_TEST_EMAIL !== TEST_EMAIL || !env.LOCAL_TEST_PASSWORD || !env.LOCAL_PUBLISHABLE_KEY) {
     throw new Error('Run npm run local:up to prepare the local test account.');
   }
-  return { api, key: env.LOCAL_PUBLISHABLE_KEY, email: TEST_EMAIL, password: env.LOCAL_TEST_PASSWORD };
+  const itadApiKey = String(env.ITAD_API_KEY || env.ISTHEREANYDEAL_API_KEY || '').trim();
+  return { api, key: env.LOCAL_PUBLISHABLE_KEY, email: TEST_EMAIL, password: env.LOCAL_TEST_PASSWORD, itadApiKey };
 }

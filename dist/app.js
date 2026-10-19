@@ -4,6 +4,7 @@ import { DEMO_GAMES } from './demo.js';
 import { icon } from './icons.js';
 import { removeLegacyKeys } from './account.js';
 import { initAccountUI } from './account-ui.js';
+import { PriceClient, ITAD_SHOPS, safeStoreUrl } from './prices.js';
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -28,6 +29,8 @@ let deciding = false;
 let loadError = '';
 let requestController;
 let detailsController;
+let priceController;
+let priceTimer;
 let undoEntry = null;
 let collectionStatus = 'all';
 let toastTimer;
@@ -35,7 +38,71 @@ let filterTimer;
 let detailsGameId = null;
 let drag = null;
 let connectionController;
+const priceClient = new PriceClient({ country: /^pt/i.test(navigator.language || '') ? 'BR' : 'US' });
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+function renderCardStoresMarkup(snapshot) {
+  const countryToggle = `<button type="button" class="store-currency" data-action="toggle-currency" aria-label="Switch store currency (${priceClient.country === 'BR' ? 'BRL to USD' : 'USD to BRL'})">${priceClient.country === 'BR' ? 'BRL' : 'USD'}</button>`;
+  if (!snapshot) {
+    return `<span class="store-pill store-pill-loading">${icon('tag')}<span>Checking Steam · GOG · Epic…</span></span>${countryToggle}`;
+  }
+  if (snapshot.consoleOnly) {
+    return `<span class="store-pill store-pill-muted">${icon('tag')}<span>Console release · No PC store listing</span></span>`;
+  }
+  const pills = ['steam', 'gog', 'epic'].map(key => {
+    const shop = ITAD_SHOPS[key];
+    const deal = snapshot.stores?.[key];
+    if (deal && typeof deal.price === 'number') {
+      const href = safeStoreUrl(deal.url) || snapshot.searchLinks?.[key] || '#';
+      const isBest = snapshot.bestStore === key;
+      return `<a class="store-pill${isBest ? ' store-pill-best' : ''}" href="${escape(href)}" target="_blank" rel="noopener noreferrer" aria-label="${escape(shop.label)}: ${escape(deal.formattedPrice)}${deal.cut > 0 ? `, ${deal.cut}% off` : ''}${isBest ? ', lowest price' : ''}"><span class="store-name">${escape(shop.shortLabel)}</span><strong class="store-price">${escape(deal.formattedPrice)}</strong>${deal.cut > 0 ? `<span class="store-cut">-${deal.cut}%</span>` : ''}</a>`;
+    }
+    const searchHref = snapshot.searchLinks?.[key] || '#';
+    return `<a class="store-pill store-pill-empty" href="${escape(searchHref)}" target="_blank" rel="noopener noreferrer" aria-label="${escape(shop.label)}: no active offer listed, search on store"><span class="store-name">${escape(shop.shortLabel)}</span><span class="store-na">—</span></a>`;
+  }).join('');
+  return `${pills}${countryToggle}`;
+}
+
+function renderDetailsStoresMarkup(snapshot, game) {
+  const currencyControls = `<div class="currency-switch" role="group" aria-label="Store price currency"><button type="button" class="currency-chip" data-price-country="US" aria-pressed="${priceClient.country === 'US'}">USD ($)</button><button type="button" class="currency-chip" data-price-country="BR" aria-pressed="${priceClient.country === 'BR'}">BRL (R$)</button></div>`;
+  if (!snapshot) {
+    return `<div class="details-stores-head"><span class="details-stores-title">${icon('tag')} Compare PC Stores</span>${currencyControls}</div><p class="details-stores-loading">Checking Steam, GOG, and Epic Games via IsThereAnyDeal…</p>`;
+  }
+  if (snapshot.consoleOnly) {
+    return `<div class="details-stores-head"><span class="details-stores-title">${icon('tag')} PC Store Prices</span></div><p class="details-stores-note">This title is a console release (${escape(platformNames(game))}) and has no Steam, GOG, or Epic Games listing.</p>`;
+  }
+  const cards = ['steam', 'gog', 'epic'].map(key => {
+    const shop = ITAD_SHOPS[key];
+    const deal = snapshot.stores?.[key];
+    if (deal && typeof deal.price === 'number') {
+      const href = safeStoreUrl(deal.url) || snapshot.searchLinks?.[key] || '#';
+      const isBest = snapshot.bestStore === key;
+      return `<a class="details-store-card${isBest ? ' is-best' : ''}" href="${escape(href)}" target="_blank" rel="noopener noreferrer"><div class="details-store-top"><span class="details-store-name">${escape(shop.label)}</span>${isBest ? '<span class="details-store-badge">Lowest</span>' : deal.cut > 0 ? `<span class="details-store-cut">-${deal.cut}%</span>` : ''}</div><div class="details-store-pricing"><strong class="details-store-price">${escape(deal.formattedPrice)}</strong>${deal.cut > 0 && deal.formattedRegular ? `<span class="details-store-regular">${escape(deal.formattedRegular)}</span>` : ''}</div><span class="details-store-cta">${deal.cut > 0 ? `Save ${deal.cut}%` : 'Open store'} ${icon('external')}</span></a>`;
+    }
+    const href = snapshot.searchLinks?.[key] || '#';
+    return `<a class="details-store-card is-unavailable" href="${escape(href)}" target="_blank" rel="noopener noreferrer"><div class="details-store-top"><span class="details-store-name">${escape(shop.label)}</span></div><div class="details-store-pricing"><span class="details-store-na">Not listed</span></div><span class="details-store-cta">Search store ${icon('external')}</span></a>`;
+  }).join('');
+  const historyNote = snapshot.historyLow?.formattedAmount ? `All-time low: <strong>${escape(snapshot.historyLow.formattedAmount)}</strong> · ` : '';
+  return `<div class="details-stores-head"><span class="details-stores-title">${icon('tag')} Compare PC Stores</span>${currencyControls}</div><div class="details-stores-grid">${cards}</div><p class="details-stores-note">${historyNote}Prices via <a href="https://isthereanydeal.com/" target="_blank" rel="noopener noreferrer">IsThereAnyDeal</a> (Steam · GOG · Epic Games).</p>`;
+}
+
+function scheduleCardPriceLoad(game, immediate = false) {
+  clearTimeout(priceTimer);
+  priceController?.abort();
+  if (!game) return;
+  const runLookup = async () => {
+    const controller = new AbortController();
+    priceController = controller;
+    try {
+      const snapshot = await priceClient.forGame(game, controller.signal);
+      if (controller.signal.aborted || queue[0]?.id !== game.id || loading || loadError) return;
+      const node = $('#game-stores');
+      if (node) node.innerHTML = renderCardStoresMarkup(snapshot);
+    } catch {}
+  };
+  if (immediate) runLookup();
+  else priceTimer = setTimeout(runLookup, 220);
+}
 
 function hydrateIcons(root = document) {
   root.querySelectorAll('[data-icon]').forEach(node => { node.innerHTML = icon(node.dataset.icon); });
@@ -64,7 +131,9 @@ function updateConnection() {
   $('#demo-banner').hidden = !!client;
   $('#disconnect').hidden = !rawgKey;
 }
-function renderCard() {
+function renderCard(immediatePrice = false) {
+  clearTimeout(priceTimer);
+  priceController?.abort();
   const card = $('#game-card');
   card.style.transform = '';
   card.style.opacity = '';
@@ -94,8 +163,10 @@ function renderCard() {
   }
   const supported = platformNames(game);
   const year = /^\d{4}/.test(game.released || '') ? game.released.slice(0, 4) : 'Release year unknown';
-  card.innerHTML = `${image(game, 'game-image', 'eager')}<div class="game-scrim"></div><div class="game-card-top"><span class="game-category">${icon('shuffle')} ${client ? 'YOUR NEXT DISCOVERY' : 'DEMO SELECTION'}</span>${game.rating ? `<span class="game-rating">${icon('star')} ${game.rating.toFixed(1)} <span class="rating-max">/ 5</span></span>` : ''}</div><span class="swipe-stamp" id="swipe-stamp"></span><div class="game-copy"><div class="game-genres">${game.genres.slice(0, 3).map(slug => `<span>${escape(labelGenre(slug))}</span>`).join('')}</div><h2 class="game-title">${escape(game.name)}</h2>${game.description ? `<p class="game-description">${escape(game.description)}</p>` : ''}<div class="game-meta"><div class="game-meta-left"><span>${year}</span><span class="meta-divider"></span><span class="game-platforms" title="${escape(supported)}">${escape(supported || 'View platforms on RAWG')}</span></div><button class="details-link" data-details="${game.id}">View details ${icon('external')}</button></div></div>`;
+  const cachedPrice = priceClient.peek(game);
+  card.innerHTML = `${image(game, 'game-image', 'eager')}<div class="game-scrim"></div><div class="game-card-top"><span class="game-category">${icon('shuffle')} ${client ? 'YOUR NEXT DISCOVERY' : 'DEMO SELECTION'}</span>${game.rating ? `<span class="game-rating">${icon('star')} ${game.rating.toFixed(1)} <span class="rating-max">/ 5</span></span>` : ''}</div><span class="swipe-stamp" id="swipe-stamp"></span><div class="game-copy"><div class="game-genres">${game.genres.slice(0, 3).map(slug => `<span>${escape(labelGenre(slug))}</span>`).join('')}</div><h2 class="game-title">${escape(game.name)}</h2>${game.description ? `<p class="game-description">${escape(game.description)}</p>` : ''}<div class="game-stores" id="game-stores" aria-label="PC store prices">${renderCardStoresMarkup(cachedPrice)}</div><div class="game-meta"><div class="game-meta-left"><span>${year}</span><span class="meta-divider"></span><span class="game-platforms" title="${escape(supported)}">${escape(supported || 'View platforms on RAWG')}</span></div><button class="details-link" data-details="${game.id}">View details ${icon('external')}</button></div></div>`;
   $('#card-announcement').textContent = `Suggested: ${game.name}. ${game.genres.map(labelGenre).join(', ')}. Use the arrow keys to choose.`;
+  if (!cachedPrice) scheduleCardPriceLoad(game, immediatePrice);
   // Preload only the next cover to keep the next swipe immediate.
   if (queue[1]?.image) { const next = new Image(); next.src = safeImage(queue[1].image); }
 }
@@ -122,7 +193,7 @@ async function loadGames(initial = false) {
   requestController = controller;
   loadError = '';
   if (!client) {
-    loading = false; demoQueue(initial); renderCard(); return;
+    loading = false; demoQueue(initial); renderCard(initial); return;
   }
   loading = true;
   queue = [];
@@ -137,7 +208,7 @@ async function loadGames(initial = false) {
     if (controller.signal.aborted) return;
     loadError = error.message;
   } finally {
-    if (!controller.signal.aborted) { loading = false; renderCard(); }
+    if (!controller.signal.aborted) { loading = false; renderCard(true); }
   }
 }
 function applyFilters() {
@@ -251,6 +322,15 @@ function disconnect() {
   renderFilters(); updateConnection(); loadGames();
   toast('RAWG key removed. Your collection was kept.', 'key');
 }
+async function refreshDetailsPrices(game, signal) {
+  if (!game) return;
+  try {
+    const snapshot = await priceClient.forGame(game, signal);
+    if (signal?.aborted || detailsGameId !== game.id) return;
+    const container = $('#details-stores');
+    if (container) container.innerHTML = renderDetailsStoresMarkup(snapshot, game);
+  } catch {}
+}
 async function openDetails(id) {
   const game = queue.find(g => g.id === id) || history.find(e => e.game.id === id)?.game;
   if (!game) return;
@@ -258,8 +338,10 @@ async function openDetails(id) {
   const controller = new AbortController();
   detailsController = controller;
   detailsGameId = id;
-  $('#details-content').innerHTML = `<div class="details-art">${image(game, '', 'eager')}<button class="icon-button" data-close="details-dialog" aria-label="Close details">${icon('x')}</button></div><div class="details-body"><div class="game-genres">${game.genres.map(g => `<span>${escape(labelGenre(g))}</span>`).join('')}</div><h2>${escape(game.name)}</h2><div class="details-meta"><span>${escape(platformNames(game))}</span>${game.metacritic ? `<span>Metacritic: ${game.metacritic}</span>` : ''}</div><p class="details-description" id="details-description">${client ? 'Loading RAWG details…' : escape(game.description || 'See more information on RAWG.')}</p><a class="button primary-button" href="https://rawg.io/games/${encodeURIComponent(game.slug)}" target="_blank" rel="noopener noreferrer">View on RAWG ${icon('external')}</a><p class="details-source">${client ? 'Original description provided by RAWG; it may be in English.' : 'Demo with English editorial copy. Covers and ratings: RAWG.'}</p></div>`;
+  const cachedPrice = priceClient.peek(game);
+  $('#details-content').innerHTML = `<div class="details-art">${image(game, '', 'eager')}<button class="icon-button" data-close="details-dialog" aria-label="Close details">${icon('x')}</button></div><div class="details-body"><div class="game-genres">${game.genres.map(g => `<span>${escape(labelGenre(g))}</span>`).join('')}</div><h2>${escape(game.name)}</h2><div class="details-meta"><span>${escape(platformNames(game))}</span>${game.metacritic ? `<span>Metacritic: ${game.metacritic}</span>` : ''}</div><section class="details-stores" id="details-stores" aria-label="PC store prices">${renderDetailsStoresMarkup(cachedPrice, game)}</section><p class="details-description" id="details-description">${client ? 'Loading RAWG details…' : escape(game.description || 'See more information on RAWG.')}</p><a class="button primary-button" href="https://rawg.io/games/${encodeURIComponent(game.slug)}" target="_blank" rel="noopener noreferrer">View on RAWG ${icon('external')}</a><p class="details-source">${client ? 'Original description provided by RAWG; it may be in English.' : 'Demo with English editorial copy. Covers and ratings: RAWG.'}</p></div>`;
   $('#details-dialog').showModal();
+  if (!cachedPrice) refreshDetailsPrices(game, controller.signal);
   if (client) {
     try {
       const details = await client.details(id, controller.signal);
@@ -270,8 +352,30 @@ async function openDetails(id) {
     }
   }
 }
+function applyCurrencyCountry(nextCountry) {
+  priceClient.setCountry(nextCountry);
+  const currentGame = queue[0];
+  if (currentGame && $('#game-stores')) {
+    const cached = priceClient.peek(currentGame);
+    $('#game-stores').innerHTML = renderCardStoresMarkup(cached);
+    if (!cached) scheduleCardPriceLoad(currentGame, true);
+  }
+  if (detailsGameId !== null && $('#details-dialog').open) {
+    const detailsGame = queue.find(g => g.id === detailsGameId) || history.find(e => e.game.id === detailsGameId)?.game;
+    if (detailsGame && $('#details-stores')) {
+      const cached = priceClient.peek(detailsGame);
+      $('#details-stores').innerHTML = renderDetailsStoresMarkup(cached, detailsGame);
+      if (!cached) refreshDetailsPrices(detailsGame, detailsController?.signal);
+    }
+  }
+}
 
 document.addEventListener('click', event => {
+  const priceCountry = event.target.closest('[data-price-country]');
+  if (priceCountry) {
+    applyCurrencyCountry(priceCountry.dataset.priceCountry);
+    return;
+  }
   const platform = event.target.closest('[data-platform]');
   if (platform && !deciding) {
     const slug = platform.dataset.platform;
@@ -311,6 +415,7 @@ document.addEventListener('click', event => {
     case 'undo': undo(); break;
     case 'collection': collectionStatus = action.dataset.status; location.hash = 'collection'; renderCollection(); break;
     case 'clear-search': $('#collection-search').value = ''; renderCollection(); $('#collection-search').focus(); break;
+    case 'toggle-currency': applyCurrencyCountry(priceClient.country === 'BR' ? 'US' : 'BR'); break;
   }
 });
 $('#genre').addEventListener('change', event => { if (!deciding) { filters.genre = event.target.value; applyFilters(); } });
@@ -362,7 +467,7 @@ card.addEventListener('pointermove', event => {
   card.style.transition = 'none';
   card.style.transform = `translateX(${dx * .7}px) rotate(${dx / 22}deg)`;
   const stamp = $('#swipe-stamp');
-  if (stamp) { stamp.textContent = dx > 0 ? 'VOU JOGAR' : 'SEM INTERESSE'; stamp.style.color = dx > 0 ? 'var(--green)' : 'var(--red)'; stamp.style.opacity = Math.min(Math.abs(dx) / 100, 1); }
+  if (stamp) { stamp.textContent = STATUSES[dx > 0 ? 'yes' : 'no'].label.toUpperCase(); stamp.style.color = dx > 0 ? 'var(--green)' : 'var(--red)'; stamp.style.opacity = Math.min(Math.abs(dx) / 100, 1); }
 });
 function endDrag(event, cancelled = false) {
   if (!drag || event.pointerId !== drag.id) return;
@@ -380,8 +485,8 @@ document.addEventListener('error', event => { if (event.target instanceof HTMLIm
 window.addEventListener('hashchange', () => { route(); window.scrollTo({ top: 0, behavior: 'instant' }); $('#main').focus({ preventScroll: true }); });
 async function replaceAccountState(state) {
   stateGeneration++; deciding = false;
-  connectionController?.abort(); requestController?.abort(); detailsController?.abort();
-  clearTimeout(filterTimer); drag = null;
+  connectionController?.abort(); requestController?.abort(); detailsController?.abort(); priceController?.abort();
+  clearTimeout(filterTimer); clearTimeout(priceTimer); drag = null;
   client = null; genres = [...GENRES]; catalogPlatforms = []; undoEntry = null;
   history = state.history; filters = state.filters; rawgKey = state.rawg_key;
   $('#api-key').value = ''; $('#collection-search').value = '';

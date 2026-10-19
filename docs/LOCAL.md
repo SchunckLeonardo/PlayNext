@@ -40,3 +40,5 @@ npm run local:down
 - App and Supabase ports bind to `127.0.0.1`. Supabase CLI 2.121.0 publishes services on all interfaces; `local/loopback.mjs` restricts only this project's `db` and `kong` containers while preserving the volume and gateway configuration in memory. The script checks labels before modifying a container.
 - The image runs as an unprivileged user, with a read-only filesystem and no extra capabilities.
 - The first run downloads official images and requires internet access and disk space. RAWG queries still require your own key when you leave the demo.
+- Store prices (`/api/prices`) work out of the box using the reference demo catalog; if `ITAD_API_KEY` is set in your shell environment before `npm run local:up`, `scripts/local.mjs` forwards it into `.local/app.env` (`0600`, Git-ignored) so the container queries the live IsThereAnyDeal API within the 100 req / 5 min sliding window.
+
