@@ -16,22 +16,22 @@ export class RawgClient {
       response = await this.request(url.href, { signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(18000)]) : AbortSignal.timeout(18000), referrerPolicy: 'no-referrer' });
     } catch (error) {
       if (signal?.aborted) throw error;
-      throw new RawgError('Não foi possível acessar a RAWG. Confira sua chave de API e sua conexão e tente novamente.');
+      throw new RawgError('Could not reach RAWG. Check your API key and connection, then try again.');
     }
     if (!response.ok) {
-      if ([401, 403].includes(response.status)) throw new RawgError('A RAWG não aceitou esta chave. Confira sua API key e tente novamente.', response.status);
-      if (response.status === 429) throw new RawgError('Limite de consultas da RAWG atingido. Aguarde um pouco e tente novamente.', 429);
-      throw new RawgError('A RAWG está indisponível no momento. Tente novamente em instantes.', response.status);
+      if ([401, 403].includes(response.status)) throw new RawgError('RAWG rejected this key. Check your API key and try again.', response.status);
+      if (response.status === 429) throw new RawgError('RAWG request limit reached. Wait a moment and try again.', 429);
+      throw new RawgError('RAWG is currently unavailable. Try again in a moment.', response.status);
     }
     let data;
-    try { data = await response.json(); } catch { throw new RawgError('A RAWG retornou uma resposta inesperada. Tente novamente.'); }
+    try { data = await response.json(); } catch { throw new RawgError('RAWG returned an unexpected response. Try again.'); }
     return data;
   }
   async catalog(path, signal) {
     const results = [];
     for (let page = 1; page <= 10; page++) {
       const data = await this.get(path, { page_size: 40, page }, signal);
-      if (!Array.isArray(data.results)) throw new RawgError('Não foi possível carregar os filtros da RAWG.');
+      if (!Array.isArray(data.results)) throw new RawgError('Could not load RAWG filters.');
       results.push(...data.results);
       if (!data.next) break;
     }
@@ -42,11 +42,11 @@ export class RawgClient {
     return { platforms, genres };
   }
   async sample({ platforms, genre = '', history = [], signal }) {
-    if (!platforms.length) throw new RawgError('Esta plataforma não está disponível no catálogo da RAWG.');
+    if (!platforms.length) throw new RawgError('This platform is not available in the RAWG catalog.');
     const params = { page_size: 40, platforms: platforms.join(','), ordering: '-added', dates: `1970-01-01,${new Date().toISOString().slice(0, 10)}` };
     if (genre) params.genres = genre;
     const first = await this.get('games', params, signal);
-    if (!Array.isArray(first.results) || !Number.isFinite(first.count)) throw new RawgError('A RAWG retornou uma lista inesperada.');
+    if (!Array.isArray(first.results) || !Number.isFinite(first.count)) throw new RawgError('RAWG returned an unexpected list.');
     const count = Math.max(0, first.count);
     if (!count) return { games: [], count: 0 };
     const pages = Math.ceil(count / 40);

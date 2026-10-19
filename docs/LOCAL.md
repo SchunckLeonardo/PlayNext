@@ -1,25 +1,25 @@
-# Testar PlayNext em Docker
+# Test PlayNext with Docker
 
-O ambiente tem a aplicação em um container Node e Postgres, Auth, API REST e gateway do Supabase em containers separados. Não usa o projeto Supabase de produção e não precisa de chave Google ou RAWG para testar a demonstração.
+The app runs in a Node container; Postgres, Auth, REST, and the Supabase gateway run in separate containers. This setup never uses the production Supabase project and does not require a Google or RAWG key to test the demo.
 
-## Iniciar
+## Start
 
-Pré-requisitos: macOS/Linux (ou WSL), Docker Desktop/Engine com socket Unix local funcionando, Node 24 e Supabase CLI **2.121.0**. A CLI é gratuita e `start`/`status`/`stop` locais não exigem login no Supabase. Instalação oficial: https://supabase.com/docs/guides/local-development/cli/getting-started
+Requirements: macOS/Linux (or WSL), Docker Desktop/Engine with a working local Unix socket, Node 24, and Supabase CLI **2.121.0**. The CLI is free; local `start`, `status`, and `stop` do not require Supabase sign-in. Official installation guide: https://supabase.com/docs/guides/local-development/cli/getting-started
 
 ```sh
 npm ci --ignore-scripts
 npm run local:up
 ```
 
-`npm run dev` é um atalho para a mesma inicialização Docker.
+`npm run dev` is an alias for the same Docker startup.
 
-Abra http://127.0.0.1:4173. A faixa **AMBIENTE LOCAL** identifica os dados sintéticos. Em **Entrar**, clique **Entrar com conta de teste local**.
+Open http://127.0.0.1:4173. The **LOCAL ENVIRONMENT** banner identifies synthetic data. Click **Sign in**, then **Sign in with local test account**.
 
-A identidade `qa@playnext.test` é registrada de verdade no **Auth local**. A senha aleatória é gerada automaticamente e fica em `.local/test-user.json` e `.local/app.env`, ignorados pelo Git. O frontend local recebe apenas sua chave publicável e essa fixture; a chave administrativa da CLI fica em memória no processo de preparação. Não envie nenhum desses arquivos a serviços de produção.
+The `qa@playnext.test` identity is registered in **local Auth**. Its random password is generated automatically and stored in `.local/test-user.json` and `.local/app.env`, which Git ignores. The local frontend receives only its publishable key and this fixture; the CLI admin key stays in process memory. Never send these files to production services.
 
-Esse adaptador local usa senha para testar sessão, coleção e criptografia sem uma conta Google de testes. O Google SSO de produção continua em `dist/oauth.js`; o adaptador e o botão locais são servidos somente por `local/server.mjs`, fora de `dist/`. O teste local não comprova a tela de consentimento OAuth real.
+This local adapter uses a password to test sessions, collections, and encryption without a Google test account. Production Google SSO remains in `dist/oauth.js`; the adapter and local button are served only by `local/server.mjs`, outside `dist/`. Local testing does not verify the real Google OAuth consent screen.
 
-## Verificar e encerrar
+## Verify and stop
 
 ```sh
 npm run local:test
@@ -27,16 +27,16 @@ npm run local:status
 npm run local:down
 ```
 
-`local:test` executa os testes unitários dentro do container, o teste SQL transacional existente e um fluxo real de login, três listas, salvamento, revisão conflitante, logout e nova entrada. Ao terminar, restaura a coleção da fixture. O SQL usa rollback. O comando recusa URLs fora do loopback e não usa credenciais do projeto remoto.
+`local:test` runs unit tests inside the container, the existing transactional SQL test, and a real flow covering sign-in, three lists, save, revision conflicts, sign-out, and sign-in again. It restores the fixture collection afterward. SQL changes are rolled back. The command rejects non-loopback URLs and does not use remote project credentials.
 
-`local:down` para somente os containers desse projeto e preserva o volume local e a conta para a próxima sessão. Não execute comandos de reset com dados que deseja manter.
+`local:down` stops only this project's containers and preserves the local volume and account for the next session. Do not run reset commands if you want to keep local data.
 
-## Código e isolamento
+## Code and isolation
 
-- `supabase/config.toml`: configuração local, sem Google/SMTP e sem vínculo ao projeto remoto. Não executar `supabase config push` com esse arquivo.
-- `scripts/local.mjs`: inicia o stack, prepara a identidade via Auth Admin local e gera os arquivos ignorados.
-- `local/`: imagem e servidor de desenvolvimento; a aplicação serve a configuração local em vez da configuração de produção.
-- `compose.yaml`: container do PlayNext; arquivos `.local` entram como variáveis de ambiente e nunca são copiados à imagem.
-- As portas da aplicação e do Supabase ficam vinculadas a `127.0.0.1`. A CLI 2.121.0 publica os serviços em todas as interfaces; `local/loopback.mjs` restringe apenas os containers `db` e `kong` deste projeto, preservando o volume e a configuração do gateway em memória. O script valida os rótulos antes de modificar um container.
-- A imagem roda como usuário sem privilégios, filesystem somente leitura e sem capabilities adicionais.
-- A primeira execução baixa imagens oficiais e precisa de internet/espaço em disco. As consultas RAWG continuam dependendo de uma chave própria quando quiser sair da demonstração.
+- `supabase/config.toml`: local-only configuration with no Google/SMTP and no remote project link. Do not run `supabase config push` with this file.
+- `scripts/local.mjs`: starts the stack, creates the identity through local Auth Admin, and generates ignored local files.
+- `local/`: development image and server; the app receives local configuration instead of production configuration.
+- `compose.yaml`: PlayNext container; `.local` files are passed as environment variables and never copied into the image.
+- App and Supabase ports bind to `127.0.0.1`. Supabase CLI 2.121.0 publishes services on all interfaces; `local/loopback.mjs` restricts only this project's `db` and `kong` containers while preserving the volume and gateway configuration in memory. The script checks labels before modifying a container.
+- The image runs as an unprivileged user, with a read-only filesystem and no extra capabilities.
+- The first run downloads official images and requires internet access and disk space. RAWG queries still require your own key when you leave the demo.

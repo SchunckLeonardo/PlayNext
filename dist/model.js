@@ -11,21 +11,21 @@ export const PLATFORMS = [
   { slug: 'xbox360', label: 'Xbox 360', family: 'Xbox' },
 ];
 export const GENRES = [
-  { slug: 'action', name: 'Ação' }, { slug: 'adventure', name: 'Aventura' },
+  { slug: 'action', name: 'Action' }, { slug: 'adventure', name: 'Adventure' },
   { slug: 'role-playing-games-rpg', name: 'RPG' }, { slug: 'indie', name: 'Indie' },
-  { slug: 'strategy', name: 'Estratégia' }, { slug: 'shooter', name: 'Tiro' },
-  { slug: 'casual', name: 'Casual' }, { slug: 'simulation', name: 'Simulação' },
-  { slug: 'puzzle', name: 'Quebra-cabeça' }, { slug: 'arcade', name: 'Arcade' },
-  { slug: 'platformer', name: 'Plataforma' }, { slug: 'racing', name: 'Corrida' },
-  { slug: 'sports', name: 'Esportes' }, { slug: 'fighting', name: 'Luta' },
-  { slug: 'family', name: 'Família' }, { slug: 'board-games', name: 'Tabuleiro' },
-  { slug: 'educational', name: 'Educativo' }, { slug: 'card', name: 'Cartas' },
-  { slug: 'massively-multiplayer', name: 'Multijogador massivo' },
+  { slug: 'strategy', name: 'Strategy' }, { slug: 'shooter', name: 'Shooter' },
+  { slug: 'casual', name: 'Casual' }, { slug: 'simulation', name: 'Simulation' },
+  { slug: 'puzzle', name: 'Puzzle' }, { slug: 'arcade', name: 'Arcade' },
+  { slug: 'platformer', name: 'Platformer' }, { slug: 'racing', name: 'Racing' },
+  { slug: 'sports', name: 'Sports' }, { slug: 'fighting', name: 'Fighting' },
+  { slug: 'family', name: 'Family' }, { slug: 'board-games', name: 'Board games' },
+  { slug: 'educational', name: 'Educational' }, { slug: 'card', name: 'Card' },
+  { slug: 'massively-multiplayer', name: 'Massively multiplayer' },
 ];
 export const STATUSES = {
-  yes: { label: 'Vou jogar', icon: 'heart', color: 'green' },
-  no: { label: 'Sem interesse', icon: 'x', color: 'red' },
-  played: { label: 'Já joguei', icon: 'check', color: 'blue' },
+  yes: { label: 'Want to play', icon: 'heart', color: 'green' },
+  no: { label: 'Not interested', icon: 'x', color: 'red' },
+  played: { label: 'Played', icon: 'check', color: 'blue' },
 };
 export const HISTORY_KEY = 'playnext.history.v1';
 export const FILTERS_KEY = 'playnext.filters.v1';
@@ -48,7 +48,7 @@ export function unseenGames(games, history) {
   return games.filter(game => !seen.has(game.id) && !unique.has(game.id) && unique.add(game.id));
 }
 export function decide(history, game, status, now = new Date().toISOString()) {
-  if (!STATUSES[status]) throw new Error('Escolha inválida.');
+  if (!STATUSES[status]) throw new Error('Invalid choice.');
   return [{ game, status, decidedAt: now }, ...history.filter(entry => entry.game.id !== game.id)];
 }
 export function readHistory(storage) {

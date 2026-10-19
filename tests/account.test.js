@@ -66,7 +66,7 @@ test('a conflict prevents queued writes and preserves the unsaved state for expo
   await assert.rejects(account.save(state),e=>e===conflict);
   await assert.rejects(account.retry(state),e=>e===conflict);
   assert.equal(calls,1); assert.equal(state.rawg_key,'synthetic');
-  assert.match(accountMessage(conflict),/outra aba/);
+  assert.match(accountMessage(conflict),/another tab/);
 });
 test('a network error can retry the current snapshot without overwriting a newer revision', async () => {
   let calls=0;

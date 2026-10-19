@@ -1,76 +1,76 @@
-# Verificação — 19/10/2026
+# Validation — 2026-10-19
 
-## v2.1.0 em revisão — segurança e Docker
+## v2.1.0 security and Docker review
 
-- SAST CodeQL `security-extended`; verificador de severidade cobre regras no driver e nos query packs SARIF, inclusive resultados sem `level`. Relatórios sem metadados falham. Um SARIF real com `js/insecure-download`, severidade 8.1, foi usado para comprovar saída 1 do gate; o smoke test verifica a configuração por um endpoint de saúde, sem baixar o módulo JavaScript.
-- SCA: SDK Supabase 2.118.0 e cinco componentes inventariados no lockfile; UMD oficial e cópia vendorizada têm o SHA-256 esperado. `npm audit` encontrou zero vulnerabilidades na verificação local.
-- Conta `qa@playnext.test` registrada no Auth local, com senha aleatória em arquivos ignorados; nenhuma fixture enviada a produção.
-- Aplicação, Postgres, Auth, REST e gateway testados em Docker. Portas 4173/54321/54322 restritas a 127.0.0.1; segunda inicialização preserva o volume e a conta.
-- Integração real: três classificações, salvamento e recuperação após novo login, conflitos, visitante recusado e teste SQL transacional de criptografia/RLS/exclusão. A coleção da fixture é restaurada após o teste. Login também conferido na interface local, sem importar escolhas legadas.
-- Workflows validados com actionlint 1.7.12. As execuções e relatórios do PR são a evidência atual dos checks no GitHub.
-- `main` protegida com cinco checks obrigatórios, PR, sem force-push e regras aplicadas ao administrador. Ambiente `production` exige revisão do mantenedor. Release prepara o SHA exato aprovado e recusa fonte fora do histórico de main.
-- AGENTS.md local excluído em .git/info/exclude; pacote de produção inclui somente dist/ e o manifesto de hospedagem. Não inclui conta local, arquivos .env ou instruções privadas.
-- A release v2.1.0 e o deploy dependem da aprovação do mantenedor; esta preparação não altera o Site de produção.
+- SAST: CodeQL `security-extended`; the severity gate covers rules in SARIF drivers and query packs, including results without a `level`. Reports missing metadata fail closed. A real SARIF result for `js/insecure-download` with severity 8.1 verified that the gate exits with status 1. The smoke test checks configuration through a health endpoint without downloading the JavaScript module.
+- SCA: Supabase SDK 2.118.0 and five components are inventoried in the lockfile; the official UMD and vendored copy match the expected SHA-256. Local `npm audit` reported no vulnerabilities.
+- The `qa@playnext.test` account is registered in local Auth. Its random password is in Git-ignored files; no fixture was sent to production.
+- The app, Postgres, Auth, REST, and gateway were tested in Docker. Ports 4173/54321/54322 are restricted to 127.0.0.1; a second startup preserves the volume and account.
+- Integration: three decisions, save and recovery after signing in again, conflicts, guest access denied, and a transactional SQL test for encryption/RLS/deletion. The fixture collection is restored after the test. Local UI sign-in was also checked without importing legacy choices.
+- Workflows passed actionlint 1.7.12. GitHub Actions runs and PR reports are the current evidence for repository checks.
+- `main` is protected by five required checks and PR review, disallows force-pushes, and applies rules to administrators. The `production` environment requires maintainer review. Release preparation pins the exact approved SHA and rejects source outside `main` history.
+- Local `AGENTS.md` is excluded through `.git/info/exclude`. The production package contains only `dist/` and the hosting manifest; it excludes local accounts, `.env` files, and private instructions.
+- The GitHub v2.1.0 release is published. Site deployment is separate and was not part of that release workflow.
 
-## Automatizada — versão 2.0.0
+## Automated checks — version 2.0.0
 
-- `npm test`: **33 testes passaram**. Filtros, três classificações, normalização, sorteio limitado, cancelamento, erros RAWG e regressão do contexto nativo de fetch. Novos testes comprovam snapshots de salvamento, fila/revisões, conflitos, retentativas, cancelamento na troca de conta e normalização de dados legados. O fluxo Google rejeita origem/janela incorretas, destino externo, popup bloqueado e cancelamento; transfere apenas tokens Supabase e limpa listeners/timers.
-- O **SDK oficial Supabase JS 2.118.0** foi exercitado com URL OAuth Google, sessão/logout simulados e armazenamento instrumentado. Com as mesmas opções usadas pelo aplicativo, não houve leitura ou gravação em armazenamento persistente.
-- `npm run check`: sintaxe de todos os módulos da aplicação.
-- Testes HTTP simulados não usam credenciais reais. A chave publicável Supabase faz parte da configuração pública; nenhuma chave privilegiada foi obtida ou incluída.
+- `npm test`: **33 tests passed**. Coverage included filters, three decisions, normalization, bounded sampling, cancellation, RAWG errors, and the native `fetch` context regression. Additional tests covered save snapshots, queues/revisions, conflicts, retries, cancellation during account changes, and legacy data normalization. Google flow tests reject invalid origins/windows, external targets, blocked pop-ups, and cancellation; they transfer only Supabase tokens and clear listeners/timers.
+- The **official Supabase JS SDK 2.118.0** was exercised with a Google OAuth URL, simulated sessions/sign-out, and instrumented storage. With the app's options, it did not read or write persistent storage.
+- `npm run check`: syntax of every application module.
+- Mock HTTP tests use no real credentials. The Supabase publishable key is part of public configuration; no privileged key was obtained or included.
 
-## Banco real, via MCP Supabase
+## Live database through Supabase MCP
 
-Migração `playnext_private_accounts` aplicada no projeto conectado. `supabase/tests/private_accounts.sql` passou com dados sintéticos e rollback:
+Migration `playnext_private_accounts` was applied to the connected project. `supabase/tests/private_accounts.sql` passed with synthetic data and rollback:
 
-- Salvamento criptografado e leitura equivalente pelo proprietário.
-- Coluna física do Vault não contém o segredo sintético em texto legível.
-- Revisão antiga é recusada; estado inválido é recusado.
-- Usuário B não carrega os dados do usuário A.
-- Papel autenticado não lê o schema Vault, não faz mutações diretas e só vê seus metadados pela RLS.
-- Visitante não executa as RPCs nem lê os metadados.
-- Exclusão da conta elimina seu segredo e preserva o outro usuário.
-- Requisição sem identidade é recusada.
+- Encrypted save and matching read by the owner.
+- The physical Vault column does not contain the synthetic secret as readable text.
+- Stale revisions and invalid state are rejected.
+- User B cannot load User A's data.
+- Authenticated users cannot read the Vault schema or write directly; RLS exposes only their metadata.
+- Guests cannot call the RPCs or read metadata.
+- Deleting an account removes its secret and preserves the other user's data.
+- Requests without an identity are rejected.
 
-O advisor de segurança retorna **quatro avisos**: três das RPCs SECURITY DEFINER acessíveis ao papel autenticado e um de proteção de senhas vazadas desabilitada. O último não se aplica ao login atual, pois e-mail/senha está desabilitado e não criamos senhas próprias. As três RPCs são intencionais. Elas precisam desse privilégio para operar o Vault sem expor o schema e conferem `auth.uid()` internamente. Não há concessão a visitantes. Justificativa e fonte em `supabase/README.md`.
+The security advisor reports **four warnings**: three for the intentional authenticated `SECURITY DEFINER` RPCs and one for disabled leaked-password protection. The latter does not apply because email/password sign-in is disabled and the app creates no passwords. The RPCs need the privilege to use Vault without exposing its schema and check `auth.uid()` internally. Guests receive no grants. See `supabase/README.md` for the rationale and source.
 
-## Navegador, Google SSO atual
+## Browser — current Google SSO
 
-Prévia HTTP local com o provedor Google real:
+The real Google provider was used from a local HTTP preview:
 
-- Entrada Google retornou ao callback e a interface exibiu a identidade conectada. Consulta agregada confirmou uma identidade Google e nenhuma senha própria.
-- Uma decisão de demonstração foi salva. Consulta agregada confirmou revisão 1, uma escolha e conteúdo físico criptografado, sem retornar o documento privado.
-- Recarregar encerrou a sessão da aba. Nova entrada Google recuperou a escolha na coleção; registro de teste removido pela interface ao terminar; consulta agregada confirmou revisão 2 e coleção vazia. Logout confirmado na interface. A conta Google e o histórico legado do navegador foram preservados.
-- Permissões declaradas no Google: somente identidade, e-mail e perfil básico.
-- A janela OAuth é separada e pode fechar rapidamente se o Google reutilizar uma sessão já aberta. A automação acompanha a aba principal; o retorno e a coleção restaurada foram verificados nela.
+- Google sign-in returned to the callback and the interface showed the connected identity. An aggregate query confirmed one Google identity and no password credential.
+- A demo decision was saved. An aggregate query confirmed revision 1, one choice, and encrypted physical content without returning the private document.
+- Reloading ended the tab session. Signing in again restored the choice in the collection. The test record was removed through the UI; an aggregate query confirmed revision 2 and an empty collection. Sign-out was verified in the UI. The Google account and legacy browser history were preserved.
+- Google permissions requested: identity, email, and basic profile only.
+- OAuth opens a separate window, which may close quickly if Google reuses an existing session. Automation follows the main tab; the return and restored collection were verified there.
 
-## Verificações anteriores preservadas
+## Earlier checks preserved
 
-Antes de substituir senha por Google, prévia HTTP local com conta sintética temporária exclusiva de QA:
+Before replacing passwords with Google, a local HTTP preview used a temporary synthetic QA-only account:
 
-- Login real por senha no Supabase e carregamento do estado pelo SDK.
-- Três decisões, uma em cada lista, salvas no banco. Consulta da fixture confirmou revisão 3, três escolhas, statuses played/no/yes e conteúdo físico criptografado.
-- Recarregar exige novo login; após entrar, as três escolhas foram recuperadas do Supabase nas listas corretas.
-- Exportação solicitada pela interface, sem chave, senha ou token na estrutura gerada. Login/logout e limpeza da coleção da aba ao sair verificados.
-- Importação de escolhas da versão anterior é oferecida, sem importação automática. O histórico preexistente do navegador não foi removido nem atribuído à conta de teste.
-- Formulário de chave oculto; chave fictícia exercitou a falha de conexão/CORS sem travar a interface. Nenhum erro `Illegal invocation` no log observado. Não foi lida a chave real do usuário.
-- Modal de login, tutorial e navegação inspecionados visualmente no viewport 633×853. Layout base já havia passado em 375, 768, 1024 e 1440 em 17/10; não se atribui esse teste antigo aos novos elementos da conta.
-- Tutorial: quatro capturas reais salvas, três das páginas públicas RAWG (API/login/cadastro) e uma do formulário vazio PlayNext. Navegação às páginas RAWG feita por locators Playwright. Nenhuma conta RAWG criada, nenhum termo aceito e nenhuma API key capturada.
+- Real password sign-in through local Supabase and state loading through the SDK.
+- Three decisions, one per list, were saved. Fixture inspection confirmed revision 3, three choices (`played`/`no`/`yes`), and encrypted physical content.
+- Reload required a new sign-in; all three choices returned to their correct Supabase lists.
+- UI export contained no key, password, or token. Sign-in/sign-out and clearing tab memory on sign-out were verified.
+- Import of choices from the previous version is explicit, never automatic. Existing browser history was neither removed nor assigned to the test account.
+- The hidden key form used a fictitious key to exercise a connection/CORS failure without freezing the UI. No `Illegal invocation` error appeared in the observed log. The user's real key was not read.
+- Sign-in modal, tutorial, and navigation were visually inspected at 633×853. The base layout had previously passed at 375, 768, 1024, and 1440 on 2026-10-17; that earlier check is not claimed for the new account elements.
+- Tutorial: four real screenshots were saved, three from public RAWG pages (API/login/signup) and one from the empty PlayNext form. RAWG pages were navigated with Playwright locators. No RAWG account was created, terms accepted, or API key captured.
 
-## Configuração externa confirmada
+## External configuration confirmed
 
-- GitHub público `SchunckLeonardo/PlayNext`, branch `main`, publicação autorizada diretamente pelo mantenedor.
-- Google OAuth web PlayNext criado no projeto do mantenedor e conectado ao Supabase por formulário autenticado, sem credenciais secretas no código.
-- Google habilitado e e-mail/senha desabilitado no painel Supabase. Signup Google permitido, anônimo e vinculação manual desabilitados. Verificações de nonce e exigência de e-mail preservadas.
-- Site URL HTTPS e dois redirects de produção exatos: raiz e `auth-callback.html`, sem wildcard. Callback local temporário removido após o QA; painel confirmou somente dois redirects de produção.
-- Marca Google em **Testing / External**; não foi alegada verificação da marca. A exceção oficial dos escopos básicos permite login sem lista de testadores.
+- Public GitHub repository `SchunckLeonardo/PlayNext`, branch `main`; publication was directly authorized by the maintainer.
+- PlayNext web Google OAuth client was created in the maintainer's project and connected to Supabase through an authenticated form; no client secret is in source code.
+- Google is enabled and email/password is disabled in Supabase. Google signup is allowed; anonymous sign-in and manual linking are disabled. Nonce and email requirements are preserved.
+- HTTPS Site URL and two exact production redirects: root and `auth-callback.html`, with no wildcard. The temporary local callback was removed after QA; the dashboard showed only the two production redirects.
+- Google brand is in **Testing / External**; it is not claimed as verified. The documented basic-scope exception allows sign-in without a tester list.
 
-## Limites e pendências
+## Limitations
 
-1. **Marca Google ainda em teste.** O console bloqueia Publish app até completar a marca. Acesso básico funciona, mas não foi validado com uma segunda conta externa. A marca não foi verificada e pode aparecer como domínio Supabase/aviso de teste. Não há dependência de SMTP para entrar com Google.
-2. **Consulta RAWG com chave válida não exercitada.** Ela deve ser testada pelo visitante no próprio campo, sem enviar a chave ao chat. O transporte preserva a correção nativa; respostas de chave inválida podem não oferecer CORS.
-3. **LGPD:** implementados controles técnicos, minimização, aviso, exportação, correção de escolhas e exclusão. Não há certificação jurídica. Região EUA e retenções de backup/logs dos provedores são divulgadas.
-4. **Importação:** a ordem salvar antes de remover protege a origem. O fluxo real não foi acionado sobre escolhas existentes do usuário. Erros de sincronização mantêm dados na memória e alertam sobre a saída.
-5. **Hospedagem:** público do Site preservado. Repositório público não torna o Site público. Capas/fontes são externas.
+1. **Google brand remains in testing.** The console blocks Publish app until brand requirements are met. Basic access works but was not checked with a second external account. The brand is not verified; Google may show the Supabase domain and a testing notice. Google sign-in does not depend on SMTP.
+2. **A valid RAWG-key query was not exercised.** Visitors should test their key in the app's own field and never send it in chat. The native transport fix is preserved; invalid-key responses may not include CORS headers.
+3. **Brazil's LGPD:** technical controls, minimization, notice, export, choice correction, and deletion are implemented. This is not legal certification. US region and provider backup/log retention are disclosed.
+4. **Import:** saving before deleting protects the source. The real flow was not run against the user's existing choices. Sync failures retain in-memory data and warn before sign-out.
+5. **Hosting:** Site audience remains owner-only. A public repository does not make the Site public. Covers and fonts are external.
 
-A conta sintética anterior já foi removida com seus dados e segredo. O item usado no QA Google foi removido; a identidade real do mantenedor foi preservada. Nenhuma escolha sintética permanece na coleção da conta. Evidências visuais operacionais ficam fora do código público, em `outputs/playnext-validation/`.
+The earlier synthetic account and its data/secret were removed. The Google QA item was removed while the maintainer's real identity was preserved. No synthetic choices remain in the account collection. Operational screenshots are kept outside the public source in `outputs/playnext-validation/`.

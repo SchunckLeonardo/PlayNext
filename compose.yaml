@@ -4,7 +4,7 @@ services:
     build:
       context: .
       dockerfile: local/Dockerfile
-    image: playnext-local:2.1.0
+    image: playnext-local:2.2.0
     ports:
       - "127.0.0.1:4173:4173"
     env_file: .local/app.env

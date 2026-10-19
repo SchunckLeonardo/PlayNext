@@ -28,17 +28,17 @@ export function createLocalServer(settings, directory = resolve('dist')) {
       if (!file.startsWith(directory + sep)) { res.writeHead(403).end(); return; }
       let body = await readFile(file);
       if (file === resolve(directory, 'index.html')) {
-        body = body.toString().replace('<body>', '<body><aside style="position:sticky;top:0;z-index:99;background:#ffd166;color:#171717;padding:10px;text-align:center;font:600 13px sans-serif" role="note">AMBIENTE LOCAL · Conta sintética de teste · Dados isolados da produção</aside>')
-          .replace('Use sua conta Google para levar a coleção com você.', 'Use a conta sintética registrada para testar sua coleção local.')
-          .replace('ao recarregar, entre com Google novamente.', 'ao recarregar, entre novamente com a conta de teste.')
-          .replace('Entrar com Google</span>', 'Entrar com conta de teste local</span>')
-          .replace('O Google confirma sua identidade. O PlayNext recebe seu e-mail e perfil básico.', 'Este teste usa uma conta sintética no Supabase local. O login Google de produção não é exercitado por essa conta.');
+        body = body.toString().replace('<body>', '<body><aside style="position:sticky;top:0;z-index:99;background:#ffd166;color:#171717;padding:10px;text-align:center;font:600 13px sans-serif" role="note">LOCAL ENVIRONMENT · Synthetic test account · Data isolated from production</aside>')
+          .replace('Use your Google account to take your collection with you.', 'Use the registered synthetic account to test your local collection.')
+          .replace('sign in with Google again after reloading.', 'sign in again with the test account after reloading.')
+          .replace('Sign in with Google</span>', 'Sign in with local test account</span>')
+          .replace('Google verifies your identity. PlayNext receives your email and basic profile.', 'This test uses a synthetic account in local Supabase. It does not exercise production Google sign-in.');
       }
       res.writeHead(200, { 'Content-Type': types[extname(file)] || 'application/octet-stream' }).end(body);
-    } catch { res.writeHead(404).end('Não encontrado'); }
+    } catch { res.writeHead(404).end('Not found'); }
   });
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const server = createLocalServer(localSettings(process.env));
-  server.listen(4173, '0.0.0.0', () => console.log('PlayNext local: http://127.0.0.1:4173 (conta sintética)'));
+  server.listen(4173, '0.0.0.0', () => console.log('PlayNext local: http://127.0.0.1:4173 (synthetic account)'));
 }
