@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import crypto from 'node:crypto';
 
-test('the bundled Auth SDK builds Google OAuth and accepts sessions without persistent storage', async () => {
+test('the OAuth popup client (memory-only options) builds Google OAuth and never touches storage', async () => {
   const storageCalls=[];
   const storage={getItem(k){storageCalls.push(['get',k]);return null},setItem(k){storageCalls.push(['set',k])},removeItem(k){storageCalls.push(['remove',k])}};
   const context=vm.createContext({console,URL,Headers,Request,Response,AbortController,TextEncoder,TextDecoder,

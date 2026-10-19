@@ -1,5 +1,11 @@
 # Validation — 2026-10-19
 
+## v2.3.0 persistent encrypted session (`access_token` + `refresh_token`)
+
+- **Encrypted IndexedDB session adapter (`dist/session-store.js`, `dist/account.js`, `dist/account-ui.js`)**: Configures the main Supabase client with `persistSession: true` and `autoRefreshToken: true` over `createSessionStorage()`, sealing `access_token` and `refresh_token` in IndexedDB (`playnext-session` / `sealed`) using AES-GCM (256-bit) under a non-extractable WebCrypto key (`extractable: false`) with storage key binding via `additionalData`. Neither `localStorage` nor `sessionStorage` is ever written.
+- **Automatic `refresh_token` rotation & lifecycle**: Expired access tokens are transparently refreshed via `grant_type=refresh_token` and re-sealed on reload; unused sessions expire after a 30-day sliding window (`SESSION_MAX_IDLE_MS`); transient network outages preserve the sealed session and retry on `online` or when opening My Account; sign-out and account deletion wipe both the sealed tokens and the device key (`sessionStore.wipe()`).
+- **Automated checks & Docker smoke**: `npm run check` (29 modules), `npm test` (61/61 passing tests including `tests/session-store.test.js`), `npm run verify:vendor`, `npm audit --audit-level=high` (0 vulnerabilities), and Docker integration (`npm run local:up`, `npm run local:test` verifying reload session restoration and `refreshSession()` against local Supabase Auth, and `npm run local:down`) all passed.
+
 ## v2.2.0 store prices (IsThereAnyDeal), bot protection, and English localization
 
 - **IsThereAnyDeal store integration (`dist/prices.js`, `server.mjs`, `local/server.mjs`)**: Queries official IsThereAnyDeal endpoints (`GET /games/lookup/v1` and `POST /games/prices/v3` with shop IDs `61` Steam, `35` GOG, and `16` Epic Games). Normalizes lowest prices, discount cuts, regular prices, store URLs (`safeStoreUrl`), and historical lows (`historyLow`), with instant `USD ($)` / `BRL (R$)` currency switching on the discovery card and inside the game details dialog.

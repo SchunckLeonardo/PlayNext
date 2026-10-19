@@ -1,6 +1,12 @@
 # Changelog
 
-## [2.2.0] — Unreleased
+## [2.3.0] — Unreleased
+
+- Keep the user signed in across page reloads and return visits with automatic `access_token` and `refresh_token` persistence and rotation (`persistSession: true`, `autoRefreshToken: true`).
+- Seal Supabase session tokens in IndexedDB (`dist/session-store.js`) using AES-GCM (256-bit) under a non-extractable WebCrypto device key (`extractable: false`), never writing tokens or keys to `localStorage` or `sessionStorage`.
+- Enforce a 30-day sliding idle window on stored sessions, preserve sealed sessions across temporary network outages (retrying automatically on reconnect), and wipe both the ciphertext and the device key on sign-out or account deletion.
+
+## [2.2.0] — 2026-10-19
 
 - Integrate Steam, GOG, and Epic Games store price comparisons via the IsThereAnyDeal API (`games/lookup/v1` and `games/prices/v3`) on the discovery card and in the game details dialog, with `USD` / `BRL` currency switching and all-time low tracking.
 - Add multi-layer backend bot and spam protection on `/api/prices`: blocks non-GET methods, honeypot parameters, scraper/headless User-Agents, cross-site fetches, and missing/invalid `X-PlayNext-Client` / `X-PlayNext-Proof` challenge tokens.
