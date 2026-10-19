@@ -78,6 +78,10 @@ jobs:
         run: |
           cd release
           sha256sum --check SHA256SUMS
+          existing_ref=$(gh api "repos/$GH_REPO/git/matching-refs/tags/$RELEASE_TAG" --jq ".[] | select(.ref == \"refs/tags/$RELEASE_TAG\") | .ref")
+          if [[ -n "$existing_ref" ]]; then
+            test "$(gh api "repos/$GH_REPO/commits/$RELEASE_TAG" --jq .sha)" = "$RELEASE_SHA"
+          fi
           if gh release view "$RELEASE_TAG" --json isDraft >/dev/null 2>&1; then
             test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = true
             test "$(gh release view "$RELEASE_TAG" --json targetCommitish --jq .targetCommitish)" = "$RELEASE_SHA"
