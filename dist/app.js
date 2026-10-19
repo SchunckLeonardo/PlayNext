@@ -1,7 +1,9 @@
-import { PLATFORMS, GENRES, STATUSES, HISTORY_KEY, FILTERS_KEY, API_KEY, shuffle, matchesFilters, unseenGames, decide, readHistory, readFilters, safeImage } from './model.js';
+import { PLATFORMS, GENRES, STATUSES, shuffle, matchesFilters, unseenGames, decide, safeImage } from './model.js';
 import { RawgClient } from './api.js';
 import { DEMO_GAMES } from './demo.js';
 import { icon } from './icons.js';
+import { removeLegacyKeys } from './account.js';
+import { initAccountUI } from './account-ui.js';
 
 const $ = selector => document.querySelector(selector);
 const $$ = selector => [...document.querySelectorAll(selector)];
@@ -9,8 +11,14 @@ const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&a
 const labelGenre = slug => GENRES.find(g => g.slug === slug)?.name || genres.find(g => g.slug === slug)?.name || slug;
 const platformNames = game => game.platforms.map(slug => PLATFORMS.find(p => p.slug === slug)?.label).filter(Boolean).join(' · ');
 const image = (game, className = '', loading = 'lazy') => safeImage(game.image) ? `<img class="${className}" src="${escape(safeImage(game.image))}" alt="Arte de ${escape(game.name)}" loading="${loading}" draggable="false">` : '';
-let history = readHistory(localStorage);
-let filters = readFilters(localStorage);
+for (const storage of ['localStorage', 'sessionStorage']) {
+  try { removeLegacyKeys(window[storage]); } catch {}
+}
+let history = [];
+let filters = { platforms: [], genre: '' };
+let rawgKey = null;
+let accountUI;
+let stateGeneration = 0;
 let genres = [...GENRES];
 let client = null;
 let catalogPlatforms = [];
@@ -38,13 +46,8 @@ function toast(message, name = 'check') {
   $('#toast').hidden = false;
   toastTimer = setTimeout(() => { $('#toast').hidden = true; }, 3700);
 }
-function saveHistory() {
-  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); return true; }
-  catch { toast('Não foi possível salvar no navegador. Suas escolhas estão apenas nesta aba.', 'info'); return false; }
-}
-function saveFilters() {
-  try { localStorage.setItem(FILTERS_KEY, JSON.stringify(filters)); } catch { /* Filters still work without storage. */ }
-}
+function saveHistory() { accountUI?.save(); return true; }
+function saveFilters() { accountUI?.save(); }
 function renderFilters() {
   const groups = ['PC', 'PlayStation', 'Nintendo', 'Xbox'];
   $('#platform-options').innerHTML = groups.map(family => `<div class="platform-family"><div class="family-label">${family}</div><div class="platform-chips">${PLATFORMS.filter(p => p.family === family).map(p => `<button class="platform-chip" data-platform="${p.slug}" aria-pressed="${filters.platforms.includes(p.slug)}"${client && !catalogPlatforms.some(cp => cp.slug === p.slug) ? ' disabled' : ''}>${p.label}</button>`).join('')}</div></div>`).join('');
@@ -57,9 +60,9 @@ function renderFilters() {
 function updateConnection() {
   $('#connection-status').classList.toggle('connected', !!client);
   $('#connection-status').innerHTML = `<i></i>${client ? 'RAWG conectada' : 'Modo demonstração'}`;
-  $('#key-button-label').textContent = client ? 'Minha chave' : 'Conectar RAWG';
+  $('#key-button-label').textContent = rawgKey ? 'Minha chave' : 'Conectar RAWG';
   $('#demo-banner').hidden = !!client;
-  $('#disconnect').hidden = !client;
+  $('#disconnect').hidden = !rawgKey;
 }
 function renderCard() {
   const card = $('#game-card');
@@ -146,6 +149,7 @@ function applyFilters() {
   } else loadGames();
 }
 async function choose(status) {
+  const generation = stateGeneration;
   const game = queue[0];
   if (!game || loading || deciding || !STATUSES[status]) return;
   deciding = true;
@@ -160,6 +164,7 @@ async function choose(status) {
     card.style.opacity = '0';
     await new Promise(resolve => setTimeout(resolve, 210));
   }
+  if (generation !== stateGeneration) return;
   undoEntry = { history, game, filters: JSON.stringify(filters) };
   history = decide(history, game, status);
   queue = queue.filter(g => g.id !== game.id);
@@ -220,7 +225,8 @@ async function connect(key, automatic = false) {
     client = candidate;
     catalogPlatforms = catalog.platforms;
     genres = catalog.genres.map(g => ({ slug: g.slug, name: g.name })).filter(g => typeof g.slug === 'string' && typeof g.name === 'string');
-    try { sessionStorage.setItem(API_KEY, key.trim()); } catch { /* The key remains in memory for this tab. */ }
+    rawgKey = key.trim();
+    if (!automatic) accountUI?.save();
     $('#api-key').value = '';
     undoEntry = null;
     renderFilters(); updateConnection();
@@ -231,7 +237,7 @@ async function connect(key, automatic = false) {
     if (controller.signal.aborted) return;
     $('#api-error').textContent = error.message;
     $('#api-error').hidden = false;
-    if (automatic) { try { sessionStorage.removeItem(API_KEY); } catch {} toast('Reconecte sua chave para continuar na RAWG.', 'info'); openApi(); $('#api-error').hidden = false; }
+    if (automatic) toast('Não foi possível reconectar à RAWG. Abra Minha chave para tentar novamente.', 'info');
   } finally {
     if (!controller.signal.aborted) { $('#connect-button').disabled = false; $('#connect-button').innerHTML = `Conectar e descobrir ${icon('arrow')}`; }
   }
@@ -239,11 +245,11 @@ async function connect(key, automatic = false) {
 function disconnect() {
   connectionController?.abort(); requestController?.abort();
   client = null; genres = [...GENRES]; undoEntry = null;
-  try { sessionStorage.removeItem(API_KEY); } catch {}
+  rawgKey = null; accountUI?.save();
   $('#api-key').value = '';
   $('#api-dialog').close();
   renderFilters(); updateConnection(); loadGames();
-  toast('RAWG desconectada. Sua coleção continua salva.', 'key');
+  toast('Chave RAWG removida. Sua coleção foi mantida.', 'key');
 }
 async function openDetails(id) {
   const game = queue.find(g => g.id === id) || history.find(e => e.game.id === id)?.game;
@@ -295,6 +301,9 @@ document.addEventListener('click', event => {
   if (!action) return;
   switch (action.dataset.action) {
     case 'api': openApi(); break;
+    case 'tutorial': $('#api-dialog').close(); $('#tutorial-dialog').showModal(); break;
+    case 'tutorial-connect': $('#tutorial-dialog').close(); openApi(); break;
+    case 'privacy': $('#privacy-dialog').showModal(); break;
     case 'disconnect': disconnect(); break;
     case 'reset-filters': if (!deciding) { filters = { platforms: [], genre: '' }; applyFilters(); } break;
     case 'all-platforms': if (!deciding) { filters.platforms = []; applyFilters(); } break;
@@ -369,9 +378,21 @@ card.addEventListener('pointerup', event => endDrag(event));
 card.addEventListener('pointercancel', event => endDrag(event, true));
 document.addEventListener('error', event => { if (event.target instanceof HTMLImageElement) { event.target.style.visibility = 'hidden'; } }, true);
 window.addEventListener('hashchange', () => { route(); window.scrollTo({ top: 0, behavior: 'instant' }); $('#main').focus({ preventScroll: true }); });
-window.addEventListener('storage', event => {
-  if (event.key === HISTORY_KEY) { history = readHistory(localStorage); queue = unseenGames(queue, history); undoEntry = null; renderStats(); renderCard(); }
-});
+async function replaceAccountState(state) {
+  stateGeneration++; deciding = false;
+  connectionController?.abort(); requestController?.abort(); detailsController?.abort();
+  clearTimeout(filterTimer); drag = null;
+  client = null; genres = [...GENRES]; catalogPlatforms = []; undoEntry = null;
+  history = state.history; filters = state.filters; rawgKey = state.rawg_key;
+  $('#api-key').value = ''; $('#collection-search').value = '';
+  if ($('#details-dialog').open) $('#details-dialog').close();
+  renderFilters(); updateConnection(); renderStats(); loadGames(true);
+  // A failed RAWG reconnect does not discard a valid encrypted account state.
+  if (rawgKey) await connect(rawgKey, true);
+}
 
 hydrateIcons(); renderFilters(); updateConnection(); renderStats(); route(); loadGames(true);
-try { const savedKey = sessionStorage.getItem(API_KEY); if (savedKey) connect(savedKey, true); } catch { /* Demo remains available when session storage is blocked. */ }
+accountUI = initAccountUI({
+  getState: () => ({ v: 1, rawg_key: rawgKey, history: structuredClone(history), filters: structuredClone(filters) }),
+  replaceState: replaceAccountState, toast,
+});

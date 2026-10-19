@@ -1,58 +1,63 @@
 # PlayNext
 
-Um jogo por vez para decidir o próximo play. Site em português, responsivo, com filtros e interações inspiradas em swipe.
+Um jogo por vez para decidir seu próximo play. Filtros de plataforma e gênero, swipe e três listas: **Vou jogar**, **Sem interesse** e **Já joguei**.
+
+Site: https://playnext-game-swipe.leonardorainha.chatgpt.site
+
+Código: https://github.com/SchunckLeonardo/PlayNext
 
 ## Executar
 
-Requer Node.js 22 ou mais recente. Não há dependências para instalar.
+Node.js 22+; sem instalação ou build. O SDK oficial Supabase JS 2.118.0 está versionado em `dist/vendor/`, com sua licença.
 
 ```sh
 npm run dev
-```
-
-Abra `http://127.0.0.1:4173`. Para hospedar em outro serviço estático, publique o conteúdo de `dist/`.
-
-## Usar
-
-1. Experimente a seleção de 12 jogos da demonstração ou clique em **Conectar RAWG** e cole sua própria API key.
-2. Selecione uma ou várias plataformas e um gênero, ou deixe todas as plataformas e gêneros.
-3. Deslize para a direita para **Vou jogar**, para a esquerda para **Sem interesse**, ou clique em **Já joguei**. Botões e teclas ← ↓ → também funcionam. **Z** ou **Desfazer última escolha** recupera a escolha anterior durante a sessão.
-4. Em **Minha coleção**, consulte as três listas, busque pelo nome, altere a classificação ou remova o jogo. Removê-lo permite que volte às sugestões.
-
-Plataformas: PC, PS1, PS2, PS3, PS4, PS5, DS/NDS, 3DS, Nintendo Switch e Xbox 360. DS e NDS são a mesma plataforma.
-
-## Dados e integração
-
-- Chave enviada diretamente à API oficial da RAWG, sem proxy ou servidor próprio. Mantida em `sessionStorage` durante a sessão; desconectar remove a chave. Não é incluída no projeto, no histórico, em analytics ou no código de publicação.
-- Escolhas e filtros em `localStorage`. Não há conta nem sincronização entre dispositivos. Limpar os dados do navegador remove a coleção.
-- `/platforms` e `/genres` descobrem os IDs e gêneros atuais ao conectar. A consulta usa apenas as plataformas solicitadas, inclusive quando “todas” está selecionado.
-- `/games` consulta jogos já lançados e sorteia páginas do catálogo e jogos dentro da página. Exclui os três tipos de escolha e duplicatas. A amostragem ocorre em lotes de até 40 e usa até quatro tentativas limitadas, com fallback se a RAWG não servir uma página aleatória; não promete distribuição estatística uniforme.
-- `/games/{id}` carrega os detalhes sob demanda. Descrições originais da API podem estar em inglês.
-- A demonstração tem 12 jogos reais, com metadados verificados em 17/10/2026 e descrições editoriais. Ela não realiza consultas ao catálogo. Capas e fontes tipográficas precisam de internet; há fontes e fundo locais de fallback.
-- As escolhas são locais e continuam disponíveis sem conectar a RAWG. A chave e a cota da RAWG pertencem a cada visitante.
-- A RAWG pode não enviar cabeçalhos CORS em respostas de chave inválida; nesse caso o navegador permite apenas uma mensagem de falha de chave/conexão.
-
-Fontes: [API e obtenção de chave](https://rawg.io/apidocs), [documentação oficial](https://api.rawg.io/docs/), [RAWG](https://rawg.io). O rodapé e os detalhes mantêm os links de atribuição.
-
-## Verificação
-
-```sh
+# http://127.0.0.1:4173
 npm test
 npm run check
 ```
 
-Testes com `node:test` e transporte HTTP simulado verificam filtros, classificações, persistência, normalização, sorteio, cancelamento e erros. Não são feitas consultas com credenciais reais nos testes.
+Para outra hospedagem estática, publique `dist/` e atualize as URLs permitidas no Supabase Auth. Produção requer HTTPS.
 
-Validação em navegador: escolhas, coleção, alteração de status, busca, persistência após reload, filtros, estados vazios, detalhes, teclado, desfazer e layout responsivo. Consulte `VALIDATION.md` para os resultados finais e limites de verificação.
+## Usar
+
+1. Experimente 12 jogos reais da demonstração ou conecte sua própria chave RAWG. **Como obter a chave** abre um tutorial com quatro capturas reais feitas com Playwright.
+2. Selecione plataformas e gênero, ou deixe geral. Plataformas: PC, PS1–PS5, DS/NDS, 3DS, Nintendo Switch e Xbox 360. DS e NDS são a mesma plataforma.
+3. Deslize à direita para **Vou jogar**, à esquerda para **Sem interesse**, ou use **Já joguei**. Teclas ← ↓ → também escolhem; **Z** desfaz.
+4. Na coleção, busque, mude a classificação ou remova jogos. Cada jogo tem apenas uma classificação e deixa de aparecer no baralho depois de escolhido.
+5. Entre para sincronizar sua coleção, filtros e chave criptografados entre dispositivos. Sem login, os dados ficam apenas na memória da aba. Ao recarregar, entre novamente; tokens não são persistidos no navegador.
+
+**Estado do envio de e-mails em 19/10/2026:** login de contas confirmadas e banco funcionando. Site URL e redirect exato configurados. O projeto ainda não tem SMTP próprio; cadastro e recuperação públicos aparecem como “em preparação”, sem submeter dados a um fluxo sem entrega. O código desses fluxos está implementado. Ative `PUBLIC_EMAIL_READY` em `dist/config.js` somente depois de configurar e verificar o envio real conforme `supabase/README.md`.
+
+## Segurança e dados
+
+- Supabase Auth gerencia e-mail, hash de senha, confirmação, recuperação e sessões. Não copiamos senhas ou e-mails para o estado da aplicação.
+- Supabase Vault armazena **um documento criptografado por usuário**, com chave RAWG, coleção e filtros. A chave de criptografia é gerenciada pelo Supabase, fora do banco. Dados de Auth também dependem das proteções da infraestrutura do provedor.
+- RPCs vinculam cada operação a `auth.uid()`; não aceitam um identificador de proprietário fornecido pelo cliente. RLS protege os metadados; visitantes não têm acesso e usuários não podem ler o Vault diretamente.
+- Salvamentos serializados usam revisão otimista para impedir que outra aba sobrescreva escolhas recentes. Falhas ficam visíveis, com retentativa, exportação e saída com descarte explícito.
+- A chave RAWG descriptografada e os tokens ficam na memória. Não há novas gravações em `localStorage` ou `sessionStorage`. As chaves legadas conhecidas são removidas de ambos sem leitura. Escolhas antigas ficam disponíveis para **importação explícita**, sendo removidas do armazenamento antigo após o salvamento criptografado.
+- Exportação pessoal exclui chave RAWG, senha e tokens. Exclusão da conta remove Auth, sessões, metadados e o segredo correspondente do banco ativo. Backups e logs seguem a retenção dos provedores.
+- `dist/config.js` contém URL e **chave publicável** do Supabase; ela é pública por definição. Nunca coloque uma chave `service_role`, chave secreta Supabase ou credencial SMTP no frontend/repositório.
+- O serviço descriptografa os dados para uso; administradores autorizados podem acessá-los. Não é criptografia de ponta a ponta nem certificação de conformidade com a LGPD. O aviso de privacidade no site descreve finalidades, provedores, região EUA, retenção, exportação e exclusão. Governança jurídica e processos do controlador continuam necessários.
+
+## RAWG
+
+As consultas vão diretamente à API oficial por HTTPS, usando a chave do visitante. Não há proxy. A RAWG exige a chave no parâmetro da URL; ferramentas de rede do navegador e o próprio provedor podem vê-la. O aplicativo não a registra em logs, exportações ou analytics.
+
+`/platforms` e `/genres` descobrem os IDs atuais. `/games` filtra plataformas/gênero/jogos lançados e sorteia páginas em até quatro tentativas limitadas; não promete distribuição estatística uniforme. Escolhas anteriores e duplicatas são excluídas. `/games/{id}` carrega detalhes sob demanda, possivelmente em inglês. Demonstração tem textos editoriais e metadados verificados em 17/10/2026; capas e fontes dependem de internet.
+
+O transporte preserva o contexto nativo de `fetch`, corrigindo `Illegal invocation`. Respostas inválidas podem não ter CORS; nesses casos o navegador só permite uma mensagem genérica de chave/conexão. Sem uma chave RAWG válida fornecida pelo visitante no próprio formulário, não afirmamos ter validado uma consulta real autenticada.
+
+Fontes: [RAWG API](https://rawg.io/apidocs), [Vault](https://supabase.com/docs/guides/database/vault), [Auth](https://supabase.com/docs/guides/auth/passwords), [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [SMTP](https://supabase.com/docs/guides/auth/auth-smtp), [direitos dos titulares na ANPD](https://www.gov.br/anpd/pt-br/assuntos/titular-de-dados-1/direito-dos-titulares).
 
 ## Organização
 
-- `dist/index.html` e `dist/styles.css`: interface e design responsivo.
-- `dist/app.js`: estado e interações da interface.
-- `dist/model.js`: filtros, histórico, dados e normalização.
-- `dist/api.js`: cliente RAWG com cancelamento e erros tratados.
-- `dist/demo.js`: seleção de demonstração identificada.
-- `tests/`: testes independentes da rede e sem chaves reais.
-- `design-system/MASTER.md`: decisões de design baseadas na UI UX Pro Max.
-
-Sem framework ou build: a pasta estática entregue já é a versão executável.
+- `dist/app.js`, `model.js`, `api.js`: descoberta, escolhas e RAWG.
+- `dist/account.js`, `account-ui.js`, `config.js`: sincronização, Auth e conta.
+- `dist/index.html`, `styles.css`, `account.css`: interface responsiva.
+- `dist/assets/tutorial/`: capturas públicas da RAWG e formulário vazio do PlayNext.
+- `supabase/migrations/`: esquema reproduzível, Vault, RLS e RPCs.
+- `supabase/tests/`: prova transacional de criptografia, isolamento e exclusão, com rollback.
+- `tests/`: regressões independentes da rede; SDK oficial exercitado com armazenamento instrumentado.
+- `design-system/MASTER.md`: direção visual baseada no UI UX Pro Max.
+- `VALIDATION.md`: evidências e limites atuais.

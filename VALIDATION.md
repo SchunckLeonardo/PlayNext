@@ -1,40 +1,53 @@
-# Verificação — 17/10/2026
+# Verificação — 19/10/2026
 
 ## Automatizada
 
-`npm test`: 22 testes com Node, sem dependências nem credenciais reais. Cobertura de filtros combinados, identidades da demonstração, todas as plataformas pedidas, prevenção de repetição, movimentação entre listas, serialização do histórico, dados malformados, sorteio de página, fallback, cancelamento e mensagens dos códigos HTTP 401/403/429/500.
+- `npm test`: **29 testes passaram**. Filtros, três classificações, normalização, sorteio limitado, cancelamento, erros RAWG e regressão do contexto nativo de fetch. Novos testes comprovam snapshots de salvamento, fila/revisões, conflitos, retentativas, cancelamento na troca de conta e normalização de dados legados.
+- O **SDK oficial Supabase JS 2.118.0** foi exercitado com login/logout simulado e armazenamento instrumentado. Com as mesmas opções usadas pelo aplicativo, não houve leitura ou gravação em armazenamento persistente.
+- `npm run check`: sintaxe de todos os módulos da aplicação.
+- Testes HTTP simulados não usam credenciais reais. A chave publicável Supabase faz parte da configuração pública; nenhuma chave privilegiada foi obtida ou incluída.
 
-`npm run check`: validação de sintaxe dos módulos executáveis.
+## Banco real, via MCP Supabase
 
-## Navegador
+Migração `playnext_private_accounts` aplicada no projeto conectado. `supabase/tests/private_accounts.sql` passou com dados sintéticos e rollback:
 
-Verificado na prévia HTTP local:
+- Salvamento criptografado e leitura equivalente pelo proprietário.
+- Coluna física do Vault não contém o segredo sintético em texto legível.
+- Revisão antiga é recusada; estado inválido é recusado.
+- Usuário B não carrega os dados do usuário A.
+- Papel autenticado não lê o schema Vault, não faz mutações diretas e só vê seus metadados pela RLS.
+- Visitante não executa as RPCs nem lê os metadados.
+- Exclusão da conta elimina seu segredo e preserva o outro usuário.
+- Requisição sem identidade é recusada.
 
-- Escolher Vou jogar, Já joguei e Sem interesse; contadores e registros correspondentes na coleção.
-- Buscar Elden Ring na coleção, alterar sua classificação e recarregar: histórico e mudança preservados.
-- Filtrar DS/NDS: Pokémon HeartGold, SoulSilver; combinar com Ação: estado vazio; limpar: sugestões retomadas.
-- Abrir detalhes: título, imagem, descrição, plataforma, Metacritic e link para o jogo na RAWG.
-- Teclado → e Z, com foco no conteúdo principal: escolha e desfazer. Corrigido e retestado um problema em que o foco em MAIN bloqueava os atalhos.
-- Arrastar uma capa para a direita em viewport de celular: jogo movido para Vou jogar; desfazer o recupera.
-- Coleção só contém uma classificação por jogo; jogos decididos saem do baralho.
-- Formulário de chave oculta, links, fechamento de modal e resposta de falha de rede/chave sem derrubar a demonstração.
-- Larguras de 375, 768, 1024 e 1440 pixels; nenhuma rolagem horizontal nas medições. Inspeção visual da composição desktop e celular.
+O advisor de segurança retorna **três avisos intencionais** das RPCs SECURITY DEFINER acessíveis ao papel autenticado. Elas precisam desse privilégio para operar o Vault sem expor o schema e conferem `auth.uid()` internamente. Não há concessão a visitantes. Justificativa e fonte em `supabase/README.md`.
 
-## Limites confirmados
+## Navegador, com Playwright no Codex
 
-- Não foi fornecida uma chave RAWG válida, portanto não houve teste completo de consulta autenticada real. O transporte foi exercitado por respostas HTTP simuladas e a falha de conexão/chave foi testada no navegador. Uma consulta HTTPS separada à RAWG com chave fictícia recebeu HTTP 401, sem cabeçalhos CORS.
-- Movimento reduzido é tratado em CSS e JavaScript; sua preferência no sistema não foi alterada durante o teste.
-- Capas e fontes são recursos externos; indisponibilidade da imagem mantém o card e os controles utilizáveis.
-- Coleção e filtros pertencem ao navegador; a chave é específica da sessão. Não há sincronização entre dispositivos.
-- Hospedagem Sites inicia com acesso privado. O projeto estático pode ser publicado em qualquer hospedagem estática.
+Prévia HTTP local, com conta sintética temporária criada exclusivamente para QA:
 
-Artefatos de teste do navegador não são incluídos no código ou na versão publicada.
+- Login real por senha no Supabase e carregamento do estado pelo SDK.
+- Três decisões, uma em cada lista, salvas no banco. Consulta da fixture confirmou revisão 3, três escolhas, statuses played/no/yes e conteúdo físico criptografado.
+- Recarregar exige novo login; após entrar, as três escolhas foram recuperadas do Supabase nas listas corretas.
+- Exportação solicitada pela interface, sem chave, senha ou token na estrutura gerada. Login/logout e limpeza da coleção da aba ao sair verificados.
+- Importação de escolhas da versão anterior é oferecida, sem importação automática. O histórico preexistente do navegador não foi removido nem atribuído à conta de teste.
+- Formulário de chave oculto; chave fictícia exercitou a falha de conexão/CORS sem travar a interface. Nenhum erro `Illegal invocation` no log observado. Não foi lida a chave real do usuário.
+- Cadastro e recuperação públicos exibem aviso de preparação e não submetem o formulário enquanto `PUBLIC_EMAIL_READY=false`.
+- Modal de login, tutorial e navegação inspecionados visualmente no viewport 633×853. Layout base já havia passado em 375, 768, 1024 e 1440 em 17/10; não se atribui esse teste antigo aos novos elementos da conta.
+- Tutorial: quatro capturas reais salvas, três das páginas públicas RAWG (API/login/cadastro) e uma do formulário vazio PlayNext. Navegação às páginas RAWG feita por locators Playwright. Nenhuma conta RAWG criada, nenhum termo aceito e nenhuma API key capturada.
 
+## Configuração externa confirmada
 
-## Correção da chamada nativa no navegador
+- GitHub público `SchunckLeonardo/PlayNext`, branch `main`, publicação autorizada diretamente pelo mantenedor.
+- No painel Supabase autenticado, Site URL alterado de localhost para o PlayNext; adicionado um único redirect HTTPS exato do mesmo site. Painel confirmou “Successfully added 1 URL”. Sem wildcard.
+- SMTP próprio estava desabilitado. Confirmação de e-mail permanece habilitada.
 
-Causa confirmada no navegador: `Failed to execute 'fetch' on 'Window': Illegal invocation`. A função nativa era armazenada e chamada como método do cliente, perdendo o contexto de Window. A correção usa uma função que chama `globalThis.fetch` com o contexto correto, preservando a conexão direta com a RAWG.
+## Limites e pendências
 
-O teste de regressão reproduz a exigência do navegador: falha se o receiver não for globalThis. Ele falhou antes e passou depois da correção. A mudança preserva as rotas, o armazenamento local, os filtros, a privacidade da chave e o restante da interface.
+1. **SMTP e entrega real de confirmação/recuperação ainda pendentes.** O mantenedor não possui provedor/domínio. Caminho com Brevo e remetente verificado documentado; exige criação da conta, aprovação/ativação e entrada de credenciais pelo mantenedor. Após verificar entrega e recuperação reais, ativar a interface e republicar. Os testes de QA usam uma fixture confirmada previamente; não constituem prova de entrega de e-mail.
+2. **Consulta RAWG com chave válida não exercitada.** Ela deve ser testada pelo visitante no próprio campo, sem enviar a chave ao chat. O transporte preserva a correção nativa; respostas de chave inválida podem não oferecer CORS.
+3. **LGPD:** implementados controles técnicos, minimização, aviso, exportação, correção de escolhas e exclusão. Não há certificação jurídica. Região EUA e retenções de backup/logs dos provedores são divulgadas.
+4. **Importação:** a ordem salvar antes de remover protege a origem. O fluxo real não foi acionado sobre escolhas existentes do usuário. Erros de sincronização mantêm dados na memória e alertam sobre a saída.
+5. **Hospedagem:** público do Site preservado. Repositório público não torna o Site público. Capas/fontes são externas.
 
-Não foi lida nem usada a chave real do usuário. A consulta com uma chave válida deve ser repetida no site atualizado. A RAWG pode ocultar respostas de uma chave inválida por CORS; a correção não pode validar uma chave sem que ela seja fornecida pelo próprio visitante.
+A conta temporária e seus dados são removidos ao encerrar o QA; nenhuma fixture real fica na versão publicada. Evidências visuais operacionais ficam fora do código público, em `outputs/playnext-validation/`.
