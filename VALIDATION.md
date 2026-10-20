@@ -23,3 +23,5 @@ No Vercel production deployment, production database migration or change to the 
 The prior Sites publication and immutable 2.x releases remain rollback references. A source release candidate can be prepared with `npm run release:prepare` after committing the complete source; it does not publish anything.
 
 Graphify was updated after the migration. Its optional `tree_sitter_sql` dependency is not installed, so SQL files were not indexed; the migration was instead exercised and analyzed in the real local database. Community labels were refreshed from graph hubs without an LLM call.
+
+The first Linux CI run exposed a host-loopback connectivity difference. The local server now joins the isolated Supabase bridge directly; its health check verifies the cache RPC before accepting traffic. Browser-facing ports remain bound to loopback.

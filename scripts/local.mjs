@@ -46,7 +46,7 @@ async function prepareAccount(status) {
   await client.auth.signOut();
   await mkdir(resolve(root, '.local'), { recursive: true });
   await writeFile(resolve(root, '.local/test-user.json'), JSON.stringify(user) + '\n', { mode: 0o600 });
-  const env = { PLAYNEXT_LOCAL_TEST: 'true', LOCAL_API_URL: assertLoopback(status.API_URL, 54321), LOCAL_PUBLISHABLE_KEY: status.PUBLISHABLE_KEY || status.ANON_KEY, LOCAL_TEST_EMAIL: user.email, LOCAL_TEST_PASSWORD: user.password, SUPABASE_URL: 'http://host.docker.internal:54321', SUPABASE_SECRET_KEY: status.SECRET_KEY || status.SERVICE_ROLE_KEY };
+  const env = { PLAYNEXT_LOCAL_TEST: 'true', LOCAL_API_URL: assertLoopback(status.API_URL, 54321), LOCAL_PUBLISHABLE_KEY: status.PUBLISHABLE_KEY || status.ANON_KEY, LOCAL_TEST_EMAIL: user.email, LOCAL_TEST_PASSWORD: user.password, SUPABASE_URL: 'http://api.supabase.internal:8000', SUPABASE_SECRET_KEY: status.SECRET_KEY || status.SERVICE_ROLE_KEY };
   const itadKey = String(process.env.ITAD_API_KEY || process.env.ISTHEREANYDEAL_API_KEY || '').trim();
   if (itadKey && !/[\r\n]/.test(itadKey)) env.ITAD_API_KEY = itadKey;
   await writeFile(resolve(root, '.local/app.env'), Object.entries(env).map(([k, v]) => `${k}=${v}`).join('\n') + '\n', { mode: 0o600 });

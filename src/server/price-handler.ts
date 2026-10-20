@@ -6,11 +6,15 @@ import {
   computeBotProof,
 } from "../lib/prices";
 import { ItadPriceService, PriceError, type PriceQuery } from "./itad";
+import { localServerApiUrl } from "./config";
 import { SupabasePriceStore } from "./price-store";
 
 function createProductionService() {
   const key = process.env.ITAD_API_KEY || "";
-  const url = process.env.SUPABASE_URL || "";
+  const url =
+    process.env.PLAYNEXT_LOCAL_TEST === "true" && !process.env.VERCEL
+      ? localServerApiUrl()
+      : process.env.SUPABASE_URL || "";
   const secret = process.env.SUPABASE_SECRET_KEY || "";
   if (process.env.VERCEL && (!url || !secret))
     throw new PriceError("Shared price protection is not configured.", 503);

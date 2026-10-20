@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { getClientConfig } from "@/server/config";
+import { getClientConfig, localServerApiUrl } from "@/server/config";
 export async function POST(request: Request) {
   if (process.env.VERCEL) return new Response(null, { status: 404 });
   const config = getClientConfig();
@@ -15,13 +15,7 @@ export async function POST(request: Request) {
     return new Response(null, { status: 404 });
   if (request.headers.get("origin") !== publicOrigin.origin)
     return new Response(null, { status: 403 });
-  const internalUrl = process.env.LOCAL_INTERNAL_API_URL || config.supabaseUrl;
-  if (
-    !/^http:\/\/(127\.0\.0\.1|localhost|host\.docker\.internal):54321$/.test(
-      internalUrl,
-    )
-  )
-    return new Response(null, { status: 403 });
+  const internalUrl = localServerApiUrl();
   const client = createClient(internalUrl, config.supabaseKey, {
     auth: { persistSession: false },
   });

@@ -9,7 +9,7 @@ npm run local:test
 npm run test:e2e
 ```
 
-`local:up` starts the isolated `playnext-local` Supabase stack, applies pending migrations **locally**, and builds the same Next.js standalone server used for production. Open `http://127.0.0.1:4173`, select **Sign in**, then **Sign in with local test account**. The identity is synthetic (`qa@playnext.test`); credentials are generated privately in ignored `.local/` files. Docker publishes only to loopback. The container uses `host.docker.internal` to reach the host's local Supabase API, while the browser receives the loopback URL.
+`local:up` starts the isolated `playnext-local` Supabase stack, applies pending migrations **locally**, and builds the same Next.js standalone server used for production. Open `http://127.0.0.1:4173`, select **Sign in**, then **Sign in with local test account**. The identity is synthetic (`qa@playnext.test`); credentials are generated privately in ignored `.local/` files. Docker publishes only to loopback. The Next container joins the isolated Supabase Docker network and reaches its gateway at `api.supabase.internal:8000`; the browser receives the loopback URL. This avoids depending on host-loopback forwarding, which differs between Linux and Docker Desktop. The health check verifies the server-to-database RPC connection.
 
 The local sign-in route is enabled only by `PLAYNEXT_LOCAL_TEST=true`, a loopback Supabase URL and loopback Host/Origin. It always returns 404 on Vercel. Production uses Google SSO.
 

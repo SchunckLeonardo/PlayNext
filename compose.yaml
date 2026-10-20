@@ -11,9 +11,8 @@ services:
     environment:
       PORT: "4173"
       HOSTNAME: "0.0.0.0"
-      LOCAL_INTERNAL_API_URL: http://host.docker.internal:54321
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      LOCAL_INTERNAL_API_URL: http://api.supabase.internal:8000
+    networks: [supabase]
     read_only: true
     tmpfs: /tmp
     cap_drop: [ALL]
@@ -23,3 +22,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 12
+
+networks:
+  supabase:
+    external: true
+    name: playnext-local

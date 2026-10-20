@@ -47,6 +47,7 @@ try {
   assert.equal((await client.auth.signInWithPassword(user)).error, null);
   const health = await (await fetch('http://127.0.0.1:4173/api/local/health')).json();
   assert.equal(health.local, true);
+  assert.equal(health.priceStoreReady, true);
   assert.equal(health.api, new URL(status.API_URL).origin);
   assert.equal(health.prices?.secretName, 'ITAD_API_KEY');
   const blockedBot = await fetch('http://127.0.0.1:4173/api/prices?title=Hades&slug=hades&country=US', {

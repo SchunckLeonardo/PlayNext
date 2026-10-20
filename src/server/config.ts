@@ -41,3 +41,16 @@ export function getClientConfig(): ClientConfig {
     throw new Error("Browser configuration requires a public Supabase key.");
   return { supabaseUrl, supabaseKey, local };
 }
+
+export function localServerApiUrl(): string {
+  const url =
+    process.env.LOCAL_INTERNAL_API_URL || process.env.LOCAL_API_URL || "";
+  if (
+    url !== "http://api.supabase.internal:8000" &&
+    !/^http:\/\/(127\.0\.0\.1|localhost):54321$/.test(url)
+  )
+    throw new Error(
+      "Local server requests require the isolated Supabase network.",
+    );
+  return url;
+}
