@@ -10,3 +10,12 @@ graphify-out/
 .env.*
 !.env.example
 reports/
+
+.next/
+.vercel/
+*.tsbuildinfo
+playwright-report/
+test-results/
+work/
+
+next-env.d.ts

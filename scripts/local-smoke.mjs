@@ -3,13 +3,12 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { localStatus, fixture, publicClient, run, root } from './local.mjs';
 import { LOCAL_PROJECT } from '../local/config.mjs';
-import { DEMO_GAMES } from '../dist/demo.js';
+import { DEMO_GAMES } from '../src/lib/demo.ts';
 import { createClient } from '@supabase/supabase-js';
-import { emptyState, persistentAuthOptions } from '../dist/account.js';
-import { createSessionStorage, memoryBackend } from '../dist/session-store.js';
-import { computeBotProof, CLIENT_HEADER_NAME, CLIENT_HEADER_VALUE, PROOF_HEADER_NAME } from '../dist/prices.js';
+import { emptyState, persistentAuthOptions } from '../src/lib/account.ts';
+import { createSessionStorage, memoryBackend } from '../src/lib/session-store.ts';
+import { computeBotProof, CLIENT_HEADER_NAME, CLIENT_HEADER_VALUE, PROOF_HEADER_NAME } from '../src/lib/prices.ts';
 
-run('docker', ['compose', 'exec', '-T', 'app', 'npm', 'test'], { stdio: ['ignore', 'inherit', 'inherit'] });
 run('docker', ['exec', '-i', `supabase_db_${LOCAL_PROJECT}`, 'psql', '-U', 'postgres', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1'], {
   input: await readFile(resolve(root, 'supabase/tests/private_accounts.sql'), 'utf8'),
 });
@@ -46,30 +45,46 @@ try {
   await reloadedClient.auth.signOut({ scope: 'local' });
   assert.equal((await reloadedClient.auth.getSession()).data.session, null);
   assert.equal((await client.auth.signInWithPassword(user)).error, null);
-  const health = await (await fetch('http://127.0.0.1:4173/__local/health')).json();
+  const health = await (await fetch('http://127.0.0.1:4173/api/local/health')).json();
   assert.equal(health.local, true);
+  assert.equal(health.priceStoreReady, true);
   assert.equal(health.api, new URL(status.API_URL).origin);
   assert.equal(health.prices?.secretName, 'ITAD_API_KEY');
   const blockedBot = await fetch('http://127.0.0.1:4173/api/prices?title=Hades&slug=hades&country=US', {
     headers: { 'User-Agent': 'curl/8.5.0' },
   });
   assert.equal(blockedBot.status, 403, 'Bot requests without client proof must be blocked.');
-  const validPriceRes = await fetch('http://127.0.0.1:4173/api/prices?title=Hades&slug=hades&country=US', {
+  const validPriceRes = await fetch('http://127.0.0.1:4173/api/prices?title=Subnautica&steamAppId=264710&country=US', {
     headers: {
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 Chrome/125.0.0.0 Safari/537.36',
+      'User-Agent': 'Mozilla/5.0',
       [CLIENT_HEADER_NAME]: CLIENT_HEADER_VALUE,
-      [PROOF_HEADER_NAME]: computeBotProof('Hades', 'US', Math.floor(Date.now() / 60000)),
+      [PROOF_HEADER_NAME]: computeBotProof('Subnautica', 'US', Math.floor(Date.now() / 60000)),
     },
   });
-  assert.equal(validPriceRes.status, 200);
-  assert.equal(validPriceRes.headers.get('x-ratelimit-window'), '300');
-  const pricePayload = await validPriceRes.json();
-  assert.equal(pricePayload.found, true);
-  assert.ok(pricePayload.stores && 'steam' in pricePayload.stores && 'gog' in pricePayload.stores && 'epic' in pricePayload.stores);
-  assert.ok(pricePayload.stores.steam || pricePayload.stores.gog || pricePayload.stores.epic);
+  if (health.prices.configured) {
+    const payload = await validPriceRes.json();
+    assert.equal(validPriceRes.status, 200, `Live price endpoint failed: ${payload.error || validPriceRes.status}`);
+    assert.equal(payload.source, 'itad');
+    assert.equal(payload.found, true, 'A configured server must resolve a real ITAD offer.');
+    assert.ok(payload.stores.steam?.amount > 0 || payload.stores.gog?.amount > 0);
+    console.log('PASS: genuine ITAD store offer resolved for Subnautica; the key remained server-only.');
+  } else {
+    assert.equal(validPriceRes.status, 503, 'Missing ITAD configuration must never produce fictional prices.');
+    console.log('PASS: missing ITAD key reports 503; a live offer was not tested in this environment.');
+  }
+  const { SupabasePriceStore } = await import('../src/server/price-store.ts');
+  const shared = new SupabasePriceStore(status.API_URL, status.SECRET_KEY || status.SERVICE_ROLE_KEY);
+  const bucket = 'smoke:' + Date.now();
+  assert.equal(await shared.take(bucket, 2, 300000), true);
+  assert.equal(await shared.take(bucket, 2, 300000), true);
+  assert.equal(await shared.take(bucket, 2, 300000), false);
+  await shared.set(bucket, { amount: 12.34 }, 10000);
+  assert.deepEqual(await shared.get(bucket), { amount: 12.34 });
+  assert.ok((await anonymous.rpc('playnext_price_cache_get', { p_key: bucket })).error, 'Anonymous users cannot read the shared cache.');
+  assert.ok((await client.rpc('playnext_price_quota_take', { p_bucket: bucket, p_limit: 100, p_window_ms: 300000 })).error, 'Visitors cannot reset the upstream quota.');
   const html = await (await fetch('http://127.0.0.1:4173/')).text();
-  assert.ok(html.includes('LOCAL ENVIRONMENT') && html.includes('Sign in with local test account'));
-  console.log('PASS: registered local Auth user, three encrypted choices, revision conflict, logout/login restore, anonymous denial, ITAD price endpoint + bot protection, and local-only frontend configuration.');
+  assert.ok(html.includes('LOCAL ENVIRONMENT') && html.includes('Less browsing.') && html.includes('/_next/'));
+  console.log('PASS: Next.js runtime, encrypted choices, account revisions, session reload/refresh, shared server-only price cache/quota, bot denial, and truthful ITAD configuration state.');
 } finally {
   const restored = await client.rpc('playnext_save', { p_state: original, p_revision: revision });
   assert.equal(restored.error, null, 'Restore the fixture state after the smoke test.');

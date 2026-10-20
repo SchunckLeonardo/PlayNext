@@ -1,6 +1,16 @@
 # Changelog
 
-## [2.3.0] — Unreleased
+## [3.0.0] — 2026-10-20
+
+- Migrate the complete frontend and server to Next.js App Router, React and strict TypeScript for one Vercel project. Replace the static deployment and standalone handwritten Node server.
+- Preserve the existing Google SSO callback, v1 encrypted account document, revision-safe writes and encrypted IndexedDB device sessions.
+- Resolve ITAD games by validated Steam identity or matching title and release year; reject matches between different releases such as Prey (2006) and Prey (2017).
+- Use genuine US/Brazil regional prices; remove fixed exchange rates, CheapShark fallback and hardcoded demo prices.
+- Expire both successful and missing price results. Display an all-time low only when ITAD supplies its explicit all-time value.
+- Add a server-only PostgreSQL cache and atomic shared quota for Vercel function instances. Keep missing configuration explicit and fail closed.
+- Add production Docker and browser integration tests, and update deployment, environment, release and rollback documentation.
+
+## [2.3.0] — 2026-10-19
 
 - Keep the user signed in across page reloads and return visits with automatic `access_token` and `refresh_token` persistence and rotation (`persistSession: true`, `autoRefreshToken: true`).
 - Seal Supabase session tokens in IndexedDB (`dist/session-store.js`) using AES-GCM (256-bit) under a non-extractable WebCrypto device key (`extractable: false`), never writing tokens or keys to `localStorage` or `sessionStorage`.

@@ -35,8 +35,15 @@ Exact production redirects (no wildcard): the root URL above and `https://playne
 
 ## Session and callback
 
-The main app configures the official SDK with `persistSession: true` and `autoRefreshToken: true` backed by `dist/session-store.js`, which seals the session (`access_token` and `refresh_token`) in IndexedDB using AES-GCM under a non-extractable WebCrypto device key (`localStorage` and `sessionStorage` are never used). Reloading restores the session and refreshes expired access tokens automatically; signing out or deleting the account revokes the session and wipes both the sealed tokens and the device key. A separate window (`MEMORY_AUTH_OPTIONS`) handles initial Google sign-in, returns to `auth-callback.html`, and sends only Supabase tokens to the originating tab. The tab checks the exact origin and window before validating the session with Auth. The Google provider token is never sent to the main tab or persisted.
+The main app configures the official SDK with `persistSession: true` and `autoRefreshToken: true` backed by `src/lib/session-store.ts`, which seals the session (`access_token` and `refresh_token`) in IndexedDB using AES-GCM under a non-extractable WebCrypto device key (`localStorage` and `sessionStorage` are never used). Reloading restores the session and refreshes expired access tokens automatically; signing out or deleting the account revokes the session and wipes both the sealed tokens and the device key. A separate window (`MEMORY_AUTH_OPTIONS`) handles initial Google sign-in, returns to `auth-callback.html`, and sends only Supabase tokens to the originating tab. The tab checks the exact origin and window before validating the session with Auth. The Google provider token is never sent to the main tab or persisted.
 
 The callback removes the URL fragment, uses `no-referrer`, and does not include analytics. The RAWG key and previous choices remain in memory while sign-in is in progress. The previous collection is offered for explicit import; a guest key must be connected again after sign-in. The app has no Google password form and does not require an email delivery service.
 
 Official sources: [Supabase Google Auth](https://supabase.com/docs/guides/auth/social-login/auth-google), [OAuth states and basic-scope exception](https://developers.google.com/identity/protocols/oauth2/production-readiness/overview), [brand verification](https://developers.google.com/identity/protocols/oauth2/production-readiness/brand-verification).
+
+
+## Server-only price cache (3.0.0)
+
+The additive migration `20261020135756_shared_price_cache.sql` creates two private RLS-enabled tables and three public RPCs executable only by `service_role`: `playnext_price_cache_get`, `playnext_price_cache_set`, and `playnext_price_quota_take`. The browser never receives that role's credential. Atomic per-bucket PostgreSQL locks keep all Vercel instances inside one upstream budget. Expired entries are removed during writes.
+
+Deploy this migration before enabling the new Vercel API. Configure `SUPABASE_SECRET_KEY` only on the server. The application migration preserves the existing account schema, encryption, history format, Google provider, and revision checks. The new tables can remain during rollback; do not drop user data.
