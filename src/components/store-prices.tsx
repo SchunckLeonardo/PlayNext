@@ -86,7 +86,7 @@ export function StorePrices({
           <Icon name="tag" />
           {detailed ? t("Compare PC stores") : t("PC stores")}
         </h3>
-        <CurrencySelector />
+        {detailed && <CurrencySelector />}
       </div>
       {!snapshot ? (
         <div className="price-loading" role="status">

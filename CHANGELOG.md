@@ -3,7 +3,7 @@
 ## [3.1.0] — Unreleased
 
 - Repair the store comparison layout with aligned controls, readable offer cards, explicit search actions and responsive empty states.
-- Add labeled USD / BRL selectors shared by discovery and game details. Fetch each region's actual offers and hide stale amounts while a new region loads.
+- Add a labeled USD / BRL selector in game details. Discovery cards display prices in the last selected currency without a currency control. Fetch each region's actual offers and hide stale amounts while a new region loads.
 - Add English and Brazilian Portuguese interface selection, including navigation, account dialogs, accessibility labels, tutorial, privacy copy and demo summaries.
 - Remember only language and store region as non-sensitive device preferences. Keep language and currency independent.
 - Add browser coverage for translated layouts from 320 to 1440 pixels, portrait/landscape, reduced motion, preference restoration, collection continuity and delayed regional responses.

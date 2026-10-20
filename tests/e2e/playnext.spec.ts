@@ -45,14 +45,20 @@ test("guest choices, undo, platform and genre filters, collection editing and st
     page.getByRole("heading", { name: "Elden Ring", exact: true }),
   ).toBeVisible();
   await expect(page.getByRole("link", { name: "Steam: $49.99" })).toBeVisible();
-  await page.getByRole("combobox", { name: "Currency" }).selectOption("BR");
+  await expect(page.getByRole("combobox", { name: "Currency" })).toHaveCount(0);
+  await page.getByRole("button", { name: "View details", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("combobox", { name: "Currency" }).selectOption("BR");
+  await expect(
+    dialog.getByRole("link", { name: /Steam: R\$.*149\.90/ }),
+  ).toBeVisible();
+  await expect(dialog).toContainText("Brazil");
+  await expect(dialog).not.toContainText("All-time low:");
+  await page.getByRole("button", { name: "Close Elden Ring details" }).click();
+  await expect(page.getByRole("combobox", { name: "Currency" })).toHaveCount(0);
   await expect(
     page.getByRole("link", { name: /Steam: R\$.*149\.90/ }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "View details", exact: true }).click();
-  await expect(page.getByRole("dialog")).toContainText("Brazil");
-  await expect(page.getByRole("dialog")).not.toContainText("All-time low:");
-  await page.getByRole("button", { name: "Close Elden Ring details" }).click();
   await page.getByRole("button", { name: "I want to play this game" }).click();
   await expect(page.locator(".nav-count")).toHaveText("1");
   await page.getByRole("button", { name: "Undo last choice" }).click();

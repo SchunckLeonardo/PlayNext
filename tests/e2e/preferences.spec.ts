@@ -32,6 +32,7 @@ test("language and currency are independent, synchronize with details, and survi
   await priceFixture(page);
   await page.goto("/");
   await expect(page.getByRole("link", { name: "Steam: $49.99" })).toBeVisible();
+  await expect(page.getByRole("combobox", { name: "Currency" })).toHaveCount(0);
   const name = await page.locator(".game-title").innerText();
   await page.getByRole("combobox", { name: "Language" }).selectOption("pt-BR");
   await expect(page.locator("html")).toHaveAttribute("lang", "pt-BR");
@@ -39,16 +40,19 @@ test("language and currency are independent, synchronize with details, and survi
     page.getByRole("heading", { name: /Menos busca/ }),
   ).toBeVisible();
   await expect(page.locator(".game-title")).toHaveText(name);
-  await expect(page.getByRole("combobox", { name: "Moeda" })).toHaveValue("US");
+  await expect(page.getByRole("combobox", { name: "Moeda" })).toHaveCount(0);
   await expect(
     page.getByRole("link", { name: /Steam: US\$.*49,99/ }),
   ).toBeVisible();
-  await page.getByRole("combobox", { name: "Moeda" }).selectOption("BR");
-  await expect(
-    page.getByRole("link", { name: /Steam: R\$.*149,90/ }),
-  ).toBeVisible();
   await page.getByRole("button", { name: "Ver detalhes", exact: true }).click();
   const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("combobox", { name: "Moeda" })).toHaveValue(
+    "US",
+  );
+  await dialog.getByRole("combobox", { name: "Moeda" }).selectOption("BR");
+  await expect(
+    dialog.getByRole("link", { name: /Steam: R\$.*149,90/ }),
+  ).toBeVisible();
   await expect(dialog.getByRole("combobox", { name: "Moeda" })).toHaveValue(
     "BR",
   );
@@ -63,7 +67,10 @@ test("language and currency are independent, synchronize with details, and survi
   await dialog
     .getByRole("button", { name: "Fechar Detalhes de Elden Ring" })
     .click();
-  await expect(page.getByRole("combobox", { name: "Moeda" })).toHaveValue("US");
+  await expect(page.getByRole("combobox", { name: "Moeda" })).toHaveCount(0);
+  await expect(
+    page.getByRole("link", { name: /Steam: US\$.*49,99/ }),
+  ).toBeVisible();
   await page.screenshot({
     path: "reports/preferences-discovery-portuguese.png",
   });
@@ -78,7 +85,12 @@ test("language and currency are independent, synchronize with details, and survi
     "yes",
   );
   await page.getByRole("link", { name: "Descobrir", exact: true }).click();
-  await page.getByRole("combobox", { name: "Moeda" }).selectOption("BR");
+  await page.getByRole("button", { name: "Ver detalhes", exact: true }).click();
+  await dialog.getByRole("combobox", { name: "Moeda" }).selectOption("BR");
+  await dialog.getByRole("button", { name: /^Fechar Detalhes de/ }).click();
+  await expect(
+    page.getByRole("link", { name: /Steam: R\$.*149,90/ }),
+  ).toBeVisible();
   const stored = await page.evaluate(() =>
     JSON.parse(localStorage.getItem("playnext.preferences.v1") || "{}"),
   );
@@ -87,7 +99,15 @@ test("language and currency are independent, synchronize with details, and survi
   await expect(page.getByRole("combobox", { name: "Idioma" })).toHaveValue(
     "pt-BR",
   );
-  await expect(page.getByRole("combobox", { name: "Moeda" })).toHaveValue("BR");
+  await expect(page.getByRole("combobox", { name: "Moeda" })).toHaveCount(0);
+  await expect(
+    page.getByRole("link", { name: /Steam: R\$.*149,90/ }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Ver detalhes", exact: true }).click();
+  await expect(dialog.getByRole("combobox", { name: "Moeda" })).toHaveValue(
+    "BR",
+  );
+  await dialog.getByRole("button", { name: /^Fechar Detalhes de/ }).click();
   await expect(
     page.getByRole("button", { name: "Conectar RAWG", exact: true }),
   ).toBeVisible();
@@ -189,10 +209,21 @@ test("a delayed regional response never exposes the previous currency's offer", 
   });
   await page.goto("/");
   await expect(page.getByRole("link", { name: "Steam: $49.99" })).toBeVisible();
-  await page.getByRole("combobox", { name: "Currency" }).selectOption("BR");
-  await expect(page.getByRole("link", { name: "Steam: $49.99" })).toHaveCount(
+  await page.getByRole("button", { name: "View details", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(
+    dialog.getByRole("link", { name: "Steam: $49.99" }),
+  ).toBeVisible();
+  await dialog.getByRole("combobox", { name: "Currency" }).selectOption("BR");
+  await expect(dialog.getByRole("link", { name: "Steam: $49.99" })).toHaveCount(
     0,
   );
+  await expect(
+    dialog.getByRole("link", { name: /Steam: R\$.*149\.90/ }),
+  ).toBeVisible();
+  await dialog
+    .getByRole("button", { name: "Close Elden Ring details" })
+    .click();
   await expect(
     page.getByRole("link", { name: /Steam: R\$.*149\.90/ }),
   ).toBeVisible();
