@@ -62,13 +62,15 @@ try {
     },
   });
   if (health.prices.configured) {
-    assert.equal(validPriceRes.status, 200);
     const payload = await validPriceRes.json();
+    assert.equal(validPriceRes.status, 200, `Live price endpoint failed: ${payload.error || validPriceRes.status}`);
     assert.equal(payload.source, 'itad');
     assert.equal(payload.found, true, 'A configured server must resolve a real ITAD offer.');
     assert.ok(payload.stores.steam?.amount > 0 || payload.stores.gog?.amount > 0);
+    console.log('PASS: genuine ITAD store offer resolved for Subnautica; the key remained server-only.');
   } else {
     assert.equal(validPriceRes.status, 503, 'Missing ITAD configuration must never produce fictional prices.');
+    console.log('PASS: missing ITAD key reports 503; a live offer was not tested in this environment.');
   }
   const { SupabasePriceStore } = await import('../src/server/price-store.ts');
   const shared = new SupabasePriceStore(status.API_URL, status.SECRET_KEY || status.SERVICE_ROLE_KEY);
