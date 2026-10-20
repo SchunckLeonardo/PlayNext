@@ -1,4 +1,5 @@
 import { record } from "./types";
+import type { Locale } from "./preferences";
 import type { Country, Game, Money, PriceSnapshot, StoreKey } from "./types";
 export const CLIENT_HEADER_NAME = "x-playnext-client";
 export const CLIENT_HEADER_VALUE = "playnext-web/3";
@@ -15,13 +16,22 @@ export function normalizeCountry(value: string): Country {
   if (value !== "US" && value !== "BR") throw new Error("Choose US or BR.");
   return value;
 }
-export function formatPrice(amount: number, currency: Money["currency"]) {
+export function formatPrice(
+  amount: number,
+  currency: Money["currency"],
+  locale?: Locale,
+) {
   return amount === 0
-    ? "Free"
-    : new Intl.NumberFormat(currency === "BRL" ? "pt-BR" : "en-US", {
-        style: "currency",
-        currency,
-      }).format(amount);
+    ? locale === "pt-BR"
+      ? "Grátis"
+      : "Free"
+    : new Intl.NumberFormat(
+        locale || (currency === "BRL" ? "pt-BR" : "en-US"),
+        {
+          style: "currency",
+          currency,
+        },
+      ).format(amount);
 }
 export function safeStoreUrl(value: unknown): string {
   if (typeof value !== "string") return "";

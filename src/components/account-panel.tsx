@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "./preferences";
 import { useState } from "react";
 import type { useAccount } from "./use-account";
 export function AccountPanel({
@@ -10,18 +11,21 @@ export function AccountPanel({
   local: boolean;
   privacy: () => void;
 }) {
+  const { t, text } = usePreferences();
   const [confirmation, setConfirmation] = useState("");
   return (
     <>
-      <div className="eyebrow">YOUR COLLECTION GOES WITH YOU</div>
+      <div className="eyebrow">{t("YOUR COLLECTION GOES WITH YOU")}</div>
       <h2>
-        A home for your next plays<span>.</span>
+        {t("A home for your next plays")}
+        <span>.</span>
       </h2>
       {!account.user ? (
         <>
           <p>
-            Use your Google account to take your collection with you. Your RAWG
-            key and choices are protected with encryption.
+            {t(
+              "Use your Google account to take your collection with you. Your RAWG key and choices are protected with encryption.",
+            )}
           </p>
           <button
             className="google-sign-in"
@@ -29,50 +33,54 @@ export function AccountPanel({
             onClick={account.signIn}
           >
             {account.busy
-              ? "Signing in…"
+              ? t("Signing in…")
               : local
-                ? "Sign in with local test account"
-                : "Sign in with Google"}
+                ? t("Sign in with local test account")
+                : t("Sign in with Google")}
           </button>
           {!account.configured && (
             <p className="input-help">
-              Sign-in is temporarily unavailable. You can explore as a guest.
+              {t(
+                "Sign-in is temporarily unavailable. You can explore as a guest.",
+              )}
             </p>
           )}
           <p className="input-help">
-            Your choices in this tab stay here while you sign in.
+            {t("Your choices in this tab stay here while you sign in.")}
           </p>
           <p className="privacy-short">
-            Your session stays on this device, encrypted. Sign out on shared
-            computers.
+            {t(
+              "Your session stays on this device, encrypted. Sign out on shared computers.",
+            )}
           </p>
         </>
       ) : (
         <>
           <p className="profile-identity">
-            {account.user.email || "Your account"}
+            {account.user.email || t("Your account")}
           </p>
           <p role="status">
             {account.pending
-              ? "Saving with encryption…"
+              ? t("Saving with encryption…")
               : account.error
-                ? "You have unsaved changes."
-                : "Collection saved with encryption to your account."}
+                ? t("You have unsaved changes.")
+                : t("Collection saved with encryption to your account.")}
           </p>
           {account.importCount > 0 && (
             <div className="import-panel">
-              <h3>Bring your previous choices</h3>
+              <h3>{t("Bring your previous choices")}</h3>
               <p>
-                {account.importCount} choices are available to import. Your
-                account’s choice takes precedence. Your guest key is not
-                imported.
+                {account.importCount}{" "}
+                {t(
+                  "choices are available to import. Your account’s choice takes precedence. Your guest key is not imported.",
+                )}
               </p>
               <button
                 className="button primary-button"
                 disabled={account.busy}
                 onClick={account.importChoices}
               >
-                Import previous choices
+                {t("Import previous choices")}
               </button>
             </div>
           )}
@@ -83,7 +91,7 @@ export function AccountPanel({
                 disabled={account.busy}
                 onClick={account.retry}
               >
-                Try saving again
+                {t("Try saving again")}
               </button>
             )}
             <button
@@ -91,7 +99,7 @@ export function AccountPanel({
               disabled={account.busy || account.pending > 0}
               onClick={() => account.signOut()}
             >
-              Sign out
+              {t("Sign out")}
             </button>
             {account.error && (
               <button
@@ -99,47 +107,48 @@ export function AccountPanel({
                 disabled={account.busy}
                 onClick={() => account.signOut(true)}
               >
-                Sign out and discard unsaved changes
+                {t("Sign out and discard unsaved changes")}
               </button>
             )}
           </div>
           <details className="delete-section">
-            <summary>Delete my PlayNext data</summary>
+            <summary>{t("Delete my PlayNext data")}</summary>
             <p>
-              This removes your PlayNext data and identity link. Your Google
-              account remains. Type DELETE to confirm.
+              {t(
+                "This removes your PlayNext data and identity link. Your Google account remains. Type DELETE to confirm.",
+              )}
             </p>
             <label htmlFor="delete-confirm" className="sr-only">
-              Deletion confirmation
+              {t("Deletion confirmation")}
             </label>
             <input
               id="delete-confirm"
               value={confirmation}
               onChange={(e) => setConfirmation(e.target.value)}
               autoComplete="off"
-              placeholder="Type DELETE"
+              placeholder={t("Type DELETE")}
             />
             <button
               className="button danger-button"
               disabled={account.busy || confirmation !== "DELETE"}
               onClick={account.deleteAccount}
             >
-              Delete my data
+              {t("Delete my data")}
             </button>
           </details>
         </>
       )}
       {account.error && (
         <p className="form-error" role="alert">
-          {account.error}
+          {text(account.error)}
         </p>
       )}
       <div className="account-options">
         <button className="button" onClick={account.exportData}>
-          Download my data
+          {t("Download my data")}
         </button>
         <button className="text-button" onClick={privacy}>
-          Privacy and your rights
+          {t("Privacy and your rights")}
         </button>
       </div>
     </>
