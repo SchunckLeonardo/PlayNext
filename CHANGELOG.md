@@ -1,6 +1,6 @@
 # Changelog
 
-## [3.1.0] — Unreleased
+## [3.1.0] — 2026-10-20
 
 - Repair the store comparison layout with aligned controls, readable offer cards, explicit search actions and responsive empty states.
 - Add a labeled USD / BRL selector in game details. Discovery cards display prices in the last selected currency without a currency control. Fetch each region's actual offers and hide stale amounts while a new region loads.
