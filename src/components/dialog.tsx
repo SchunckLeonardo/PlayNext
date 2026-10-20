@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "./preferences";
 import { useEffect, useRef, type ReactNode } from "react";
 import { Icon } from "./icon";
 export function Dialog({
@@ -12,6 +13,7 @@ export function Dialog({
   close: () => void;
   className?: string;
 }) {
+  const { t } = usePreferences();
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const dialog = ref.current;
@@ -47,7 +49,7 @@ export function Dialog({
           type="button"
           className="icon-button"
           onClick={close}
-          aria-label={`Close ${title}`}
+          aria-label={t("Close {title}", { title })}
         >
           <Icon name="x" />
         </button>

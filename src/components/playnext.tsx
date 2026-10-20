@@ -1,10 +1,10 @@
 "use client";
+import { usePreferences, LanguageSelector } from "./preferences";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   AccountState,
   ChoiceStatus,
   ClientConfig,
-  Country,
   Filters,
   Game,
 } from "@/lib/types";
@@ -55,11 +55,12 @@ function Artwork({
   className?: string;
   eager?: boolean;
 }) {
+  const { t } = usePreferences();
   return safeImage(game.image) ? (
     <img
       className={className}
       src={safeImage(game.image)}
-      alt={`Artwork for ${game.name}`}
+      alt={t("Artwork for {name}", { name: game.name })}
       loading={eager ? "eager" : "lazy"}
       draggable={false}
       onError={(e) => {
@@ -69,6 +70,7 @@ function Artwork({
   ) : null;
 }
 export function PlayNext({ config }: { config: ClientConfig }) {
+  const { locale, t, text } = usePreferences();
   const [state, setState] = useState<AccountState>(emptyState),
     stateRef = useRef(state);
   const [catalog, setCatalog] = useState<Catalog | null>(null),
@@ -86,8 +88,7 @@ export function PlayNext({ config }: { config: ClientConfig }) {
     ),
     [search, setSearch] = useState("");
   const [rawgInput, setRawgInput] = useState(""),
-    [showKey, setShowKey] = useState(false),
-    [country, setCountry] = useState<Country>("US");
+    [showKey, setShowKey] = useState(false);
   const [reload, setReload] = useState(0),
     [toast, setToast] = useState(""),
     [deciding, setDeciding] = useState<ChoiceStatus | null>(null),
@@ -154,9 +155,11 @@ export function PlayNext({ config }: { config: ClientConfig }) {
     location.hash = next;
   };
   const labelGenre = (slug: string) =>
-    GENRES.find((g) => g.slug === slug)?.name ||
-    catalog?.genres.find((g) => g.slug === slug)?.name ||
-    slug;
+    text(
+      GENRES.find((g) => g.slug === slug)?.name ||
+        catalog?.genres.find((g) => g.slug === slug)?.name ||
+        slug,
+    );
   const connect = useCallback(
     async (key: string, automatic = false) => {
       connectionController.current?.abort();
@@ -262,7 +265,6 @@ export function PlayNext({ config }: { config: ClientConfig }) {
     };
   }, [catalog, filters, reload]);
   useEffect(() => {
-    setCountry(/^pt/i.test(navigator.language) ? "BR" : "US");
     const route = () =>
       setView(
         location.hash.startsWith("#collection") ? "collection" : "discover",
@@ -304,7 +306,7 @@ export function PlayNext({ config }: { config: ClientConfig }) {
         persist({ ...prior, history: decide(prior.history, game, status) });
         setDeciding(null);
         setDragX(0);
-        notify(`${game.name} · ${STATUSES[status].label}`);
+        notify(`${game.name} · ${text(STATUSES[status].label)}`);
         if (available.length === 1 && catalog) setReload((v) => v + 1);
       },
       window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 210,
@@ -369,15 +371,15 @@ export function PlayNext({ config }: { config: ClientConfig }) {
   return (
     <>
       <a className="skip-link" href="#main">
-        Skip to content
+        {t("Skip to content")}
       </a>
       {config.local && (
         <div className="local-environment">
-          LOCAL ENVIRONMENT · isolated synthetic test account
+          {t("LOCAL ENVIRONMENT · isolated synthetic test account")}
         </div>
       )}
       <header className="topbar">
-        <a href="#discover" className="brand" aria-label="PlayNext, home">
+        <a href="#discover" className="brand" aria-label={t("PlayNext, home")}>
           <span className="brand-symbol">
             <Icon name="gamepad" />
           </span>
@@ -385,62 +387,68 @@ export function PlayNext({ config }: { config: ClientConfig }) {
             playnext<span className="brand-dot">.</span>
           </span>
         </a>
-        <nav aria-label="Main navigation" className="main-nav">
+        <nav aria-label={t("Main navigation")} className="main-nav">
           <a
             href="#discover"
             className={`nav-link${view === "discover" ? " active" : ""}`}
             aria-current={view === "discover" ? "page" : undefined}
           >
-            <Icon name="shuffle" /> Discover
+            <Icon name="shuffle" /> {t("Discover")}
           </a>
           <a
             href="#collection"
             className={`nav-link${view === "collection" ? " active" : ""}`}
             aria-current={view === "collection" ? "page" : undefined}
           >
-            <Icon name="collection" /> My collection{" "}
+            <Icon name="collection" /> {t("My collection")}{" "}
             <span className="nav-count">{state.history.length}</span>
           </a>
         </nav>
         <div className="header-actions">
+          <LanguageSelector />
           <span className={`connection-status${catalog ? " connected" : ""}`}>
             <i />
-            {catalog ? "RAWG connected" : "Demo mode"}
+            {catalog ? t("RAWG connected") : t("Demo mode")}
           </span>
           <button className="button button-key" onClick={() => setModal("api")}>
             <Icon name="key" />
-            <span>{state.rawg_key ? "My key" : "Connect RAWG"}</span>
+            <span>{state.rawg_key ? t("My key") : t("Connect RAWG")}</span>
           </button>
           <button className="button account-button" onClick={openAccount}>
             <Icon name="lock" />
-            <span>{account.user ? "My account" : "Sign in"}</span>
+            <span>{account.user ? t("My account") : t("Sign in")}</span>
           </button>
         </div>
       </header>
       <main id="main" tabIndex={-1}>
         {view === "discover" ? (
-          <section className="discover-layout" aria-label="Discover games">
-            <aside className="filters-panel" aria-label="Discovery filters">
+          <section className="discover-layout" aria-label={t("Discover games")}>
+            <aside
+              className="filters-panel"
+              aria-label={t("Discovery filters")}
+            >
               <div className="panel-heading">
                 <h2>
-                  <Icon name="filters" /> Your way
+                  <Icon name="filters" /> {t("Your way")}
                 </h2>
                 <button
                   className="text-button"
                   onClick={() => updateFilters({ platforms: [], genre: "" })}
                 >
-                  Clear
+                  {t("Clear")}
                 </button>
               </div>
-              <p className="filter-intro">Chance has preferences, too.</p>
+              <p className="filter-intro">
+                {t("Chance has preferences, too.")}
+              </p>
               <fieldset className="platform-fieldset">
-                <legend>WHERE YOU PLAY</legend>
+                <legend>{t("WHERE YOU PLAY")}</legend>
                 <button
                   className={`platform-all${filters.platforms.length ? "" : " selected"}`}
                   aria-pressed={!filters.platforms.length}
                   onClick={() => updateFilters({ ...filters, platforms: [] })}
                 >
-                  <Icon name="globe" /> All platforms{" "}
+                  <Icon name="globe" /> {t("All platforms")}{" "}
                   <span className="selection-dot" />
                 </button>
                 {["PC", "PlayStation", "Nintendo", "Xbox"].map((family) => (
@@ -473,7 +481,7 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                 ))}
               </fieldset>
               <div className="genre-filter">
-                <label htmlFor="genre">WHAT’S THE VIBE?</label>
+                <label htmlFor="genre">{t("WHAT’S THE VIBE?")}</label>
                 <div className="select-wrap">
                   <select
                     id="genre"
@@ -482,7 +490,7 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                       updateFilters({ ...filters, genre: e.target.value })
                     }
                   >
-                    <option value="">All genres</option>
+                    <option value="">{t("All genres")}</option>
                     {(catalog?.genres || GENRES).map((g) => (
                       <option key={g.slug} value={g.slug}>
                         {labelGenre(g.slug)}
@@ -494,17 +502,17 @@ export function PlayNext({ config }: { config: ClientConfig }) {
               <div className="filter-footnote">
                 <Icon name="info" />
                 <span>
-                  Choose one or more platforms.
+                  {t("Choose one or more platforms.")}
                   <br />
-                  Or let the universe decide.
+                  {t("Or let the universe decide.")}
                 </span>
               </div>
               <div className="sidebar-bottom">
                 <span className="tiny-star">✳</span>
                 <p>
-                  Your next great story
+                  {t("Your next great story")}
                   <br />
-                  starts with a <em>play.</em>
+                  {t("starts with a")} <em>{t("play.")}</em>
                 </p>
                 <span className="mini-line" />
               </div>
@@ -513,15 +521,15 @@ export function PlayNext({ config }: { config: ClientConfig }) {
               <div className="discovery-heading">
                 <div>
                   <div className="eyebrow">
-                    <span className="orange-dash" /> STOP STARING AT YOUR
-                    LIBRARY
+                    <span className="orange-dash" />{" "}
+                    {t("STOP STARING AT YOUR LIBRARY")}
                   </div>
                   <h1 id="discovery-title">
-                    Less browsing.
+                    {t("Less browsing.")}
                     <br />
-                    More <span>playing.</span>
+                    {t("More")} <span>{t("playing.")}</span>
                   </h1>
-                  <p>One game at a time. Your next favorite is here.</p>
+                  <p>{t("One game at a time. Your next favorite is here.")}</p>
                 </div>
                 <span className="heading-doodle" aria-hidden="true">
                   ✳
@@ -531,15 +539,17 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                 <span>
                   <span className="live-dot" />{" "}
                   {catalog
-                    ? "Discovering the RAWG catalog"
-                    : `Demo · ${available.length} games to explore`}
+                    ? t("Discovering the RAWG catalog")
+                    : t("Demo · {count} games to explore", {
+                        count: available.length,
+                      })}
                 </span>
                 <button
                   className="text-button shuffle-button"
                   disabled={loading || !!deciding}
                   onClick={() => setReload((v) => v + 1)}
                 >
-                  <Icon name="shuffle" /> Shuffle
+                  <Icon name="shuffle" /> {t("Shuffle")}
                 </button>
               </div>
               <div className="deck-stage">
@@ -549,7 +559,7 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                   id="game-card"
                   className={`game-card${!game && !loading ? " is-empty" : ""}`}
                   role="group"
-                  aria-label="Suggested game"
+                  aria-label={t("Suggested game")}
                   aria-busy={loading}
                   style={{
                     transform: deciding
@@ -569,7 +579,9 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                       loading ||
                       deciding ||
                       (event.target instanceof Element &&
-                        event.target.closest("a,button"))
+                        event.target.closest(
+                          "a,button,input,select,label,textarea",
+                        ))
                     )
                       return;
                     drag.current = {
@@ -616,8 +628,8 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                     <>
                       <div className="skeleton" />
                       <div className="loading-label">
-                        <span className="spinner" /> Finding your next
-                        adventure…
+                        <span className="spinner" />{" "}
+                        {t("Finding your next adventure…")}
                       </div>
                     </>
                   ) : game && !loadError ? (
@@ -627,11 +639,17 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                       <div className="game-card-top">
                         <span className="game-category">
                           <Icon name="shuffle" />{" "}
-                          {catalog ? "YOUR NEXT DISCOVERY" : "DEMO SELECTION"}
+                          {catalog
+                            ? t("YOUR NEXT DISCOVERY")
+                            : t("DEMO SELECTION")}
                         </span>
                         {game.rating !== null && game.rating > 0 && (
                           <span className="game-rating">
-                            <Icon name="star" /> {game.rating.toFixed(1)}{" "}
+                            <Icon name="star" />{" "}
+                            {new Intl.NumberFormat(locale, {
+                              minimumFractionDigits: 1,
+                              maximumFractionDigits: 1,
+                            }).format(game.rating)}{" "}
                             <span className="rating-max">/ 5</span>
                           </span>
                         )}
@@ -644,7 +662,9 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                           color: dragX > 0 ? "var(--green)" : "var(--red)",
                         }}
                       >
-                        {STATUSES[dragX > 0 ? "yes" : "no"].label.toUpperCase()}
+                        {text(
+                          STATUSES[dragX > 0 ? "yes" : "no"].label,
+                        ).toUpperCase()}
                       </span>
                       <div className="game-copy">
                         <div className="game-genres">
@@ -654,16 +674,16 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                         </div>
                         <h2 className="game-title">{game.name}</h2>
                         {game.description && (
-                          <p className="game-description">{game.description}</p>
+                          <p className="game-description">
+                            {text(game.description)}
+                          </p>
                         )}
                         <div
                           className="game-stores"
-                          aria-label="PC store prices"
+                          aria-label={t("PC store prices")}
                         >
                           <StorePrices
                             game={game}
-                            country={country}
-                            setCountry={setCountry}
                             rawg={catalog?.client || null}
                           />
                         </div>
@@ -671,7 +691,7 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                           <div className="game-meta-left">
                             <span>
                               {game.released?.slice(0, 4) ||
-                                "Release year unknown"}
+                                t("Release year unknown")}
                             </span>
                             <span className="meta-divider" />
                             <span className="game-platforms">
@@ -682,7 +702,7 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                             className="details-link"
                             onClick={() => setDetails(game)}
                           >
-                            View details <Icon name="external" />
+                            {t("View details")} <Icon name="external" />
                           </button>
                         </div>
                       </div>
@@ -692,12 +712,14 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                       <Icon name={loadError ? "info" : "shuffle"} />
                       <h2>
                         {loadError
-                          ? "A pause in the adventure."
-                          : "You’ve explored this selection!"}
+                          ? t("A pause in the adventure.")
+                          : t("You’ve explored this selection!")}
                       </h2>
                       <p>
-                        {loadError ||
-                          "Try another selection, broaden your filters, or connect RAWG to discover more games."}
+                        {text(loadError) ||
+                          t(
+                            "Try another selection, broaden your filters, or connect RAWG to discover more games.",
+                          )}
                       </p>
                       <button
                         className="button primary-button"
@@ -705,7 +727,9 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                           catalog ? setReload((v) => v + 1) : setModal("api")
                         }
                       >
-                        {catalog ? "Find another selection" : "Connect RAWG"}
+                        {catalog
+                          ? t("Find another selection")
+                          : t("Connect RAWG")}
                         <Icon name="arrow" />
                       </button>
                       <button
@@ -714,7 +738,7 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                           updateFilters({ platforms: [], genre: "" })
                         }
                       >
-                        Clear filters
+                        {t("Clear filters")}
                       </button>
                     </div>
                   )}
@@ -729,15 +753,15 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                       onClick={() => choose(status)}
                       aria-label={
                         status === "yes"
-                          ? "I want to play this game"
+                          ? t("I want to play this game")
                           : status === "no"
-                            ? "Not interested in this game"
-                            : "I’ve played this game"
+                            ? t("Not interested in this game")
+                            : t("I’ve played this game")
                       }
                     >
                       <Icon name={STATUSES[status].icon} />
                     </button>
-                    <span>{STATUSES[status].label}</span>
+                    <span>{text(STATUSES[status].label)}</span>
                     <kbd>
                       {status === "yes" ? "→" : status === "no" ? "←" : "↓"}
                     </kbd>
@@ -750,9 +774,11 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                   disabled={!undoState || !!deciding}
                   onClick={undo}
                 >
-                  <Icon name="undo" /> Undo last choice
+                  <Icon name="undo" /> {t("Undo last choice")}
                 </button>
-                <span className="swipe-hint">Swipe the card to choose ↔</span>
+                <span className="swipe-hint">
+                  {t("Swipe the card to choose ↔")}
+                </span>
               </div>
               {!catalog && (
                 <div className="demo-banner">
@@ -760,32 +786,32 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                     <Icon name="gamepad" />
                   </span>
                   <p>
-                    <strong>Just trying it out?</strong>
+                    <strong>{t("Just trying it out?")}</strong>
                     <br />
-                    Connect your key to explore the RAWG catalog.
+                    {t("Connect your key to explore the RAWG catalog.")}
                   </p>
                   <button
                     className="text-button"
                     onClick={() => setModal("api")}
                   >
-                    Connect <Icon name="arrow" />
+                    {t("Connect")} <Icon name="arrow" />
                   </button>
                 </div>
               )}
             </section>
-            <aside className="activity-panel" aria-label="Your activity">
+            <aside className="activity-panel" aria-label={t("Your activity")}>
               <div className="session-title">
-                <span className="live-dot" /> YOUR JOURNEY
+                <span className="live-dot" /> {t("YOUR JOURNEY")}
               </div>
               <h2>
-                Good choices.
+                {t("Good choices.")}
                 <br />
-                New adventures.
+                {t("New adventures.")}
               </h2>
               <p className="session-intro">
-                Find something that fits
+                {t("Find something that fits")}
                 <br />
-                your next free moment.
+                {t("your next free moment.")}
               </p>
               <div className="stats-list">
                 {statusKeys.map((status) => (
@@ -796,7 +822,7 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                     <span className={`stat-icon ${STATUSES[status].color}`}>
                       <Icon name={STATUSES[status].icon} />
                     </span>
-                    <span>{STATUSES[status].label}</span>
+                    <span>{text(STATUSES[status].label)}</span>
                     <strong>
                       {String(
                         state.history.filter((e) => e.status === status).length,
@@ -807,7 +833,7 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                 ))}
               </div>
               <div className="recent-heading">
-                <h3>Recent choices</h3>
+                <h3>{t("Recent choices")}</h3>
                 <span>{state.history.length}</span>
               </div>
               <div className="recent-list">
@@ -823,7 +849,7 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                         <h4>{entry.game.name}</h4>
                         <p className={STATUSES[entry.status].color}>
                           <Icon name={STATUSES[entry.status].icon} />
-                          {STATUSES[entry.status].label}
+                          {text(STATUSES[entry.status].label)}
                         </p>
                       </div>
                     </button>
@@ -831,30 +857,30 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                 ) : (
                   <div className="recent-empty">
                     <Icon name="collection" />
-                    <strong>A collection that feels like you.</strong>Your first
-                    choices will show up here.
+                    <strong>{t("A collection that feels like you.")}</strong>
+                    {t("Your first choices will show up here.")}
                   </div>
                 )}
               </div>
               <div className="keyboard-note">
                 <Icon name="monitor" />
                 <div>
-                  <strong>Keyboard works, too.</strong>
+                  <strong>{t("Keyboard works, too.")}</strong>
                   <p>
-                    Use ← ↓ → arrow keys to choose.
+                    {t("Use ← ↓ → arrow keys to choose.")}
                     <br />
-                    <kbd>Z</kbd> undoes your last choice.
+                    <kbd>Z</kbd> {t("undoes your last choice.")}
                   </p>
                 </div>
               </div>
               <div className="local-note">
                 <Icon name="lock" />
-                <p role="status">{syncNote}</p>
+                <p role="status">{text(syncNote)}</p>
               </div>
               <button className="text-button" onClick={openAccount}>
                 {account.user
-                  ? "Manage my account"
-                  : "Sign in and save choices"}
+                  ? t("Manage my account")
+                  : t("Sign in and save choices")}
               </button>
             </aside>
           </section>
@@ -865,21 +891,25 @@ export function PlayNext({ config }: { config: ClientConfig }) {
           >
             <div className="collection-heading">
               <div>
-                <div className="eyebrow">YOUR NEXT ADVENTURES</div>
+                <div className="eyebrow">{t("YOUR NEXT ADVENTURES")}</div>
                 <h1 id="collection-title">
-                  My collection<span>.</span>
+                  {t("My collection")}
+                  <span>.</span>
                 </h1>
-                <p>{syncNote}</p>
+                <p>{text(syncNote)}</p>
               </div>
               <button
                 className="button primary-button"
                 onClick={() => navigate("discover")}
               >
-                Discover games <Icon name="arrow" />
+                {t("Discover games")} <Icon name="arrow" />
               </button>
             </div>
             <div className="collection-toolbar">
-              <div className="collection-tabs" aria-label="Filter collection">
+              <div
+                className="collection-tabs"
+                aria-label={t("Filter collection")}
+              >
                 {(["all", ...statusKeys] as const).map((status) => (
                   <button
                     key={status}
@@ -887,7 +917,9 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                     aria-pressed={collectionStatus === status}
                     onClick={() => setCollectionStatus(status)}
                   >
-                    {status === "all" ? "All games" : STATUSES[status].label}{" "}
+                    {status === "all"
+                      ? t("All games")
+                      : text(STATUSES[status].label)}{" "}
                     <span>
                       {
                         state.history.filter(
@@ -901,8 +933,8 @@ export function PlayNext({ config }: { config: ClientConfig }) {
               <div className="collection-search">
                 <Icon name="search" />
                 <input
-                  aria-label="Search collection"
-                  placeholder="Search your collection"
+                  aria-label={t("Search collection")}
+                  placeholder={t("Search your collection")}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
@@ -915,7 +947,9 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                     <button
                       className="collection-cover"
                       onClick={() => setDetails(entry.game)}
-                      aria-label={`View details for ${entry.game.name}`}
+                      aria-label={t("View details for {name}", {
+                        name: entry.game.name,
+                      })}
                     >
                       <Artwork game={entry.game} />
                     </button>
@@ -929,7 +963,9 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                           className="sr-only"
                           htmlFor={`status-${entry.game.id}`}
                         >
-                          Change choice for {entry.game.name}
+                          {t("Change choice for {name}", {
+                            name: entry.game.name,
+                          })}
                         </label>
                         <select
                           id={`status-${entry.game.id}`}
@@ -948,13 +984,15 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                         >
                           {statusKeys.map((s) => (
                             <option key={s} value={s}>
-                              {STATUSES[s].label}
+                              {text(STATUSES[s].label)}
                             </option>
                           ))}
                         </select>
                         <button
                           className="icon-button"
-                          aria-label={`Remove ${entry.game.name} from your collection`}
+                          aria-label={t("Remove {name} from your collection", {
+                            name: entry.game.name,
+                          })}
                           onClick={() => {
                             setUndoState(null);
                             persist({
@@ -979,18 +1017,19 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                   <Icon name="collection" />
                   <h2>
                     {search
-                      ? "This game is not here yet."
-                      : "Every adventure starts somewhere."}
+                      ? t("This game is not here yet.")
+                      : t("Every adventure starts somewhere.")}
                   </h2>
                   <p>
-                    Swipe through games in Discover. Your choices are organized
-                    here.
+                    {t(
+                      "Swipe through games in Discover. Your choices are organized here.",
+                    )}
                   </p>
                   <button
                     className="button primary-button"
                     onClick={() => navigate("discover")}
                   >
-                    Discover games
+                    {t("Discover games")}
                   </button>
                 </div>
               )}
@@ -999,33 +1038,35 @@ export function PlayNext({ config }: { config: ClientConfig }) {
         )}
       </main>
       <footer className="footer">
-        <span>Less indecision. More fun.</span>
+        <span>{t("Less indecision. More fun.")}</span>
         <button className="text-button" onClick={() => setModal("tutorial")}>
-          How to get a key
+          {t("How to get a key")}
         </button>
         <button className="text-button" onClick={() => setModal("privacy")}>
-          Privacy
+          {t("Privacy")}
         </button>
-        <span>Made for people who love to play ✳</span>
+        <span>{t("Made for people who love to play ✳")}</span>
         <a href="https://rawg.io" target="_blank" rel="noopener noreferrer">
-          Data and images by <strong>RAWG</strong>
+          {t("Data and images by")} <strong>RAWG</strong>
           <Icon name="external" />
         </a>
       </footer>
       {toast && (
         <div className="toast" role="status" aria-live="polite">
           <Icon name="check" />
-          {toast}
+          {text(toast)}
         </div>
       )}
       <span className="sr-only" aria-live="polite">
         {game
-          ? `Suggested: ${game.name}. Use the arrow keys to choose.`
-          : "No suggested game."}
+          ? t("Suggested: {name}. Use the arrow keys to choose.", {
+              name: game.name,
+            })
+          : t("No suggested game.")}
       </span>
       {modal && (
         <Dialog
-          title={modal === "api" ? "API settings" : modal}
+          title={modal === "api" ? t("API settings") : t(modal)}
           className={
             modal === "api"
               ? "api-modal"
@@ -1042,22 +1083,24 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                 if (rawgInput.trim()) void connect(rawgInput.trim());
               }}
             >
-              <div className="eyebrow">YOUR KEY. YOUR NEXT GAME.</div>
+              <div className="eyebrow">{t("YOUR KEY. YOUR NEXT GAME.")}</div>
               <h2>
-                A universe to discover<span>.</span>
+                {t("A universe to discover")}
+                <span>.</span>
               </h2>
               <p>
-                Connect your own RAWG key to find games on your favorite
-                platforms.
+                {t(
+                  "Connect your own RAWG key to find games on your favorite platforms.",
+                )}
               </p>
-              <label htmlFor="api-key">Your RAWG API key</label>
+              <label htmlFor="api-key">{t("Your RAWG API key")}</label>
               <div className="key-input-wrap">
                 <input
                   id="api-key"
                   type={showKey ? "text" : "password"}
                   value={rawgInput}
                   onChange={(e) => setRawgInput(e.target.value)}
-                  placeholder="Paste your API key here"
+                  placeholder={t("Paste your API key here")}
                   maxLength={256}
                   required
                   autoComplete="off"
@@ -1066,7 +1109,7 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                 <button
                   type="button"
                   className="icon-button"
-                  aria-label={showKey ? "Hide API key" : "Show API key"}
+                  aria-label={showKey ? t("Hide API key") : t("Show API key")}
                   onClick={() => setShowKey((v) => !v)}
                 >
                   <Icon name="eye" />
@@ -1075,12 +1118,16 @@ export function PlayNext({ config }: { config: ClientConfig }) {
               <p className="input-help">
                 <Icon name="lock" />{" "}
                 {account.user
-                  ? "Used with RAWG and stored encrypted in your account’s Vault."
-                  : "As a guest, your key stays in this tab’s memory. Sign in to store it encrypted."}
+                  ? t(
+                      "Used with RAWG and stored encrypted in your account’s Vault.",
+                    )
+                  : t(
+                      "As a guest, your key stays in this tab’s memory. Sign in to store it encrypted.",
+                    )}
               </p>
               {connectError && (
                 <p className="form-error" role="alert">
-                  {connectError}
+                  {text(connectError)}
                 </p>
               )}
               <button
@@ -1088,7 +1135,9 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                 type="submit"
                 disabled={connecting}
               >
-                {connecting ? "Connecting to RAWG…" : "Connect and discover"}
+                {connecting
+                  ? t("Connecting to RAWG…")
+                  : t("Connect and discover")}
                 <Icon name="arrow" />
               </button>
               {state.rawg_key && (
@@ -1105,11 +1154,11 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                     closeModal();
                   }}
                 >
-                  Remove key and use demo
+                  {t("Remove key and use demo")}
                 </button>
               )}
               <div className="get-key">
-                Don’t have a key yet?{" "}
+                {t("Don’t have a key yet?")}{" "}
                 <button
                   type="button"
                   className="text-button"
@@ -1118,7 +1167,7 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                     setModal("tutorial");
                   }}
                 >
-                  See how to get one for free <Icon name="arrow" />
+                  {t("See how to get one for free")} <Icon name="arrow" />
                 </button>
               </div>
             </form>
@@ -1137,7 +1186,7 @@ export function PlayNext({ config }: { config: ClientConfig }) {
       )}
       {details && (
         <Dialog
-          title={`${details.name} details`}
+          title={t("{title} details", { title: details.name })}
           className="details-modal"
           close={() => setDetails(null)}
         >
@@ -1157,26 +1206,32 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                 <span>Metacritic: {details.metacritic}</span>
               )}
             </div>
-            <section className="details-stores" aria-label="PC store prices">
+            <section
+              className="details-stores"
+              aria-label={t("PC store prices")}
+            >
               <StorePrices
                 game={details}
-                country={country}
-                setCountry={setCountry}
                 rawg={catalog?.client || null}
                 detailed
               />
             </section>
             <p className="details-description">
-              {details.description ||
-                "No description is available for this game."}
+              {text(details.description) ||
+                t("No description is available for this game.")}
             </p>
+            {catalog && details.description && (
+              <p className="details-source">
+                {t("Description supplied by RAWG in its original language.")}
+              </p>
+            )}
             <a
               className="button primary-button"
               href={`https://rawg.io/games/${encodeURIComponent(details.slug)}`}
               target="_blank"
               rel="noopener noreferrer"
             >
-              View on RAWG <Icon name="external" />
+              {t("View on RAWG")} <Icon name="external" />
             </a>
           </div>
         </Dialog>

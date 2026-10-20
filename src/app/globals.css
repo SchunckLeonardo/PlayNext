@@ -28,3 +28,43 @@
 body{overflow-x:clip}
 
 .deck-stage{overflow-x:clip}
+
+/* Shared price comparison and explicit display preferences. */
+.preference-control{display:grid;gap:4px;min-width:0;color:var(--muted);font-size:11px;text-align:left}
+.preference-control>span{display:flex;align-items:center;gap:5px;line-height:1.2}
+.preference-control .icon{width:13px;height:13px}
+.preference-control select{min-height:44px;max-width:100%;padding:8px 26px 8px 11px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--text);font:500 12px var(--body);cursor:pointer;color-scheme:dark}
+.preference-control select:focus-visible{outline:2px solid var(--orange);outline-offset:3px}
+.language-control{width:116px;flex-shrink:0}
+.currency-control{flex:0 0 164px}
+.currency-control select{width:164px}
+.store-comparison{width:100%;min-width:0}
+.store-comparison .preference-control{display:grid;margin:0;font-size:11px}
+.store-comparison .details-stores-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 10px}
+.store-comparison .details-stores-title{display:flex;align-items:center;gap:6px;min-width:0;margin:0;font:600 18px/1.35 var(--display);color:var(--text)}
+.store-comparison-compact .details-stores-title{font-size:12px}
+.store-comparison .details-stores-title .icon{width:15px;height:15px;flex-shrink:0;color:var(--orange)}
+.store-comparison .store-pills{display:flex;flex-wrap:wrap;gap:6px;min-width:0}
+.store-comparison .store-pill{min-height:44px;max-width:100%;padding:6px 10px;gap:7px}
+.store-comparison .store-name{font-size:11px}
+.store-comparison .store-price{font-size:12px;white-space:nowrap}
+.store-comparison .details-stores-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.store-comparison .details-store-card{display:grid;grid-template-columns:minmax(0,1fr);align-content:start;gap:12px;min-width:0;min-height:132px;padding:15px;border-radius:10px;opacity:1}
+.store-comparison .details-store-top{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0}
+.store-comparison .details-store-name{font-size:12px;color:var(--text)}
+.store-comparison .details-store-pricing{display:flex;align-items:baseline;flex-wrap:wrap;gap:5px 8px;margin:0;min-width:0}
+.store-comparison .details-store-price{font:600 22px/1.25 var(--display);font-variant-numeric:tabular-nums;white-space:nowrap}
+.store-comparison .details-store-regular{font-size:12px;color:var(--muted);white-space:nowrap}
+.store-comparison .details-store-na{font-size:13px;line-height:1.5;color:var(--muted)}
+.store-comparison .details-store-cta{font-size:12px;line-height:1.5;gap:6px}
+.store-comparison .details-store-badge{justify-self:start;font-size:10px;line-height:1.5;max-width:100%}
+.store-comparison .details-store-cut{font-size:10px;flex-shrink:0}
+.store-comparison .price-status{margin:12px 0 0;font-size:12px;line-height:1.6;overflow-wrap:anywhere;color:var(--muted)}
+.store-comparison-compact .price-status{font-size:11px;line-height:1.45}
+.store-comparison .details-stores-note{font-size:12px!important;line-height:1.6!important;margin:14px 0 0!important;color:var(--muted)!important}
+.price-loading{display:flex;align-items:center;gap:9px;min-height:44px;font-size:12px;color:var(--muted)}
+.store-comparison-detailed .price-loading{min-height:132px;justify-content:center;text-align:center}
+.game-stores{display:block}
+@media(max-width:1100px){.topbar{height:auto;min-height:100px;flex-wrap:wrap;padding-top:12px;padding-bottom:12px;gap:12px 22px}.header-actions{gap:8px}.main-nav{gap:14px}.header-actions .button{white-space:nowrap}}
+@media(max-width:700px){.topbar{display:flex;padding:16px;min-height:0;gap:12px;align-items:center}.topbar .brand{margin:0;flex:1 1 calc(100% - 140px)}.header-actions{display:contents}.language-control{order:0;width:124px;flex:0 0 124px}.header-actions .button{order:2;flex:1 1 calc(50% - 6px);justify-content:center;font-size:12px;min-height:44px}.main-nav{order:3;width:100%;min-height:44px;justify-content:center}.header-actions .connection-status{display:none}.store-comparison .details-stores-grid{grid-template-columns:1fr}.store-comparison .details-store-card{min-height:0;grid-template-columns:minmax(0,1fr) auto;align-items:start;padding:14px;gap:10px 12px}.store-comparison .details-store-pricing{grid-column:2;grid-row:1 / span 2;justify-content:flex-end;max-width:180px}.store-comparison .details-store-badge{grid-column:1 / -1}.store-comparison .details-store-price{font-size:20px}.store-comparison .details-store-cta{grid-column:1}.store-comparison .store-pill{padding:6px 8px}.store-comparison-compact .details-stores-head{gap:8px}}
+@media(max-width:420px){.store-comparison-detailed .details-stores-head{align-items:stretch;flex-wrap:wrap;gap:12px}.store-comparison-detailed .details-stores-title{width:100%}.store-comparison-detailed .currency-control{flex-basis:100%}.store-comparison-detailed .currency-control select{width:100%}.store-comparison .details-store-price{font-size:18px}.store-comparison .details-store-card{padding:12px;gap:10px}.store-comparison .details-store-pricing{max-width:145px}}

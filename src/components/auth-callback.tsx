@@ -1,4 +1,5 @@
 "use client";
+import { usePreferences } from "./preferences";
 import { useEffect, useRef, useState } from "react";
 import {
   createClient,
@@ -9,6 +10,7 @@ import {
 import { MEMORY_AUTH_OPTIONS } from "@/lib/account";
 import type { ClientConfig } from "@/lib/types";
 export function AuthCallback({ config }: { config: ClientConfig }) {
+  const { text } = usePreferences();
   const sdkRef = useRef<SupabaseClient | null>(null);
   const pending = useRef<Promise<{
     data: { session: Session | null };
@@ -76,7 +78,7 @@ export function AuthCallback({ config }: { config: ClientConfig }) {
   return (
     <main className="callback-page">
       <h1>PlayNext</h1>
-      <p role="status">{status}</p>
+      <p role="status">{text(status)}</p>
     </main>
   );
 }

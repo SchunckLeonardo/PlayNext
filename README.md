@@ -2,6 +2,8 @@
 
 Less browsing, more playing. Discover a random game, swipe right to play it, left to skip it, or mark it as played. Filter by platform and genre, then revisit and edit every choice in your collection.
 
+Choose English or Brazilian Portuguese in the header. Each store comparison includes a labeled USD / BRL selector, synchronized between the discovery card and details. Language and store region are independent and remembered on this device; these preferences contain no keys, tokens or choices. English is the default interface language. RAWG descriptions remain in their source language and are attributed; demo summaries are available in both languages.
+
 PlayNext 3 uses **Next.js App Router, React and strict TypeScript**. The site and `GET /api/prices` run together on Vercel. Google sign-in and encrypted collections continue to use the existing Supabase project and v1 account document; this migration does not reset users or collections.
 
 ## Development
