@@ -1,6 +1,6 @@
 # Changelog
 
-## [3.0.0] — Unreleased
+## [3.0.0] — 2026-10-20
 
 - Migrate the complete frontend and server to Next.js App Router, React and strict TypeScript for one Vercel project. Replace the static deployment and standalone handwritten Node server.
 - Preserve the existing Google SSO callback, v1 encrypted account document, revision-safe writes and encrypted IndexedDB device sessions.
