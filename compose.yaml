@@ -3,17 +3,23 @@ services:
   app:
     build:
       context: .
-      dockerfile: local/Dockerfile
-    image: playnext-local:2.3.0
+      dockerfile: Dockerfile
+    image: playnext-local:3.0.0
     ports:
       - "127.0.0.1:4173:4173"
     env_file: .local/app.env
+    environment:
+      PORT: "4173"
+      HOSTNAME: "0.0.0.0"
+      LOCAL_INTERNAL_API_URL: http://host.docker.internal:54321
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     read_only: true
     tmpfs: /tmp
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     healthcheck:
-      test: [CMD, node, -e, "fetch('http://127.0.0.1:4173/__local/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:4173/api/local/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 5s
       timeout: 3s
       retries: 12

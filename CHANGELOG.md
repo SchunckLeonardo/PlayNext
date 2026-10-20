@@ -1,10 +1,14 @@
 # Changelog
 
-## [2.3.1] — Unreleased
+## [3.0.0] — Unreleased
 
-- Add live public storefront price resolution (`lookupPublicStorePrices`) for Steam, GOG, and Epic Games when running on static hosts without `/api/prices` (such as ChatGPT Sites) or in local environments without `ITAD_API_KEY`, protected by the same 5-minute sliding window quota, Singleflight deduplication, and in-memory cache.
-- Normalize RAWG disambiguation suffixes (e.g., `(2018)`, `(2013)`, `- Episode 1`) and match canonical full-game editions (`Remastered`, `Ultimate Edition`, `The Final Cut`, `GOTY`) while filtering out DLC, soundtracks, and add-ons.
-- Detect console-only RAWG titles directly from platform metadata and include Free-to-Play PC storefront listings (`Counter-Strike 2`, `Dota 2`, `Apex Legends`, `Fortnite`, `Warframe`, `Destiny 2`, `Rocket League`, `The Sims 4`, `Overwatch 2`, `Path of Exile`, and others).
+- Migrate the complete frontend and server to Next.js App Router, React and strict TypeScript for one Vercel project. Replace the static deployment and standalone handwritten Node server.
+- Preserve the existing Google SSO callback, v1 encrypted account document, revision-safe writes and encrypted IndexedDB device sessions.
+- Resolve ITAD games by validated Steam identity or matching title and release year; reject matches between different releases such as Prey (2006) and Prey (2017).
+- Use genuine US/Brazil regional prices; remove fixed exchange rates, CheapShark fallback and hardcoded demo prices.
+- Expire both successful and missing price results. Display an all-time low only when ITAD supplies its explicit all-time value.
+- Add a server-only PostgreSQL cache and atomic shared quota for Vercel function instances. Keep missing configuration explicit and fail closed.
+- Add production Docker and browser integration tests, and update deployment, environment, release and rollback documentation.
 
 ## [2.3.0] — 2026-10-19
 

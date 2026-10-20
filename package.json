@@ -1,21 +1,37 @@
 {
   "name": "playnext",
-  "version": "2.3.1",
+  "version": "3.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node scripts/local.mjs up",
-    "test": "node --test tests/*.test.js",
-    "check": "node scripts/check-syntax.mjs",
-    "verify:vendor": "node scripts/verify-vendor.mjs",
-    "security:sca": "npm run verify:vendor && npm audit --audit-level=high",
+    "dev": "next dev --hostname 127.0.0.1",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "check": "next typegen && tsc --noEmit",
+    "security:sca": "npm audit --audit-level=high",
     "local:up": "node scripts/local.mjs up",
     "local:down": "node scripts/local.mjs down",
     "local:status": "node scripts/local.mjs status",
-    "local:test": "node scripts/local-smoke.mjs",
-    "release:prepare": "node scripts/prepare-release.mjs"
+    "local:test": "node --import tsx scripts/local-smoke.mjs",
+    "release:prepare": "node scripts/prepare-release.mjs",
+    "build": "next build",
+    "start": "next start --hostname 0.0.0.0",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@supabase/supabase-js": "2.118.0"
+    "@supabase/supabase-js": "2.118.0",
+    "next": "16.4.2",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "engines": {
+    "node": "24.x"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3"
   }
 }

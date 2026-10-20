@@ -1,7 +1,8 @@
-name: PlayNext JavaScript security
+name: PlayNext TypeScript security
 queries:
   - uses: security-extended
 paths-ignore:
-  # The exact upstream library and its transitives are covered by SCA + integrity.
-  - dist/vendor/**
   - node_modules/**
+  - .next/**
+  - reports/**
+  - test-results/**

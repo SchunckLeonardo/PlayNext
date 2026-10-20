@@ -24,6 +24,7 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm run check
       - run: npm test
+      - run: npm run build
   sast:
     name: SAST (CodeQL)
     runs-on: ubuntu-latest
@@ -97,5 +98,7 @@ jobs:
         env:
           ITAD_API_KEY: ${{ secrets.ITAD_API_KEY }}
       - run: npm run local:test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
       - run: npm run local:down
         if: always()

@@ -1,44 +1,25 @@
-# Test PlayNext with Docker
+# Local testing
 
-The app runs in a Node container; Postgres, Auth, REST, and the Supabase gateway run in separate containers. This setup never uses the production Supabase project and does not require a Google or RAWG key to test the demo.
-
-## Start
-
-Requirements: macOS/Linux (or WSL), Docker Desktop/Engine with a working local Unix socket, Node 24, and Supabase CLI **2.121.0**. The CLI is free; local `start`, `status`, and `stop` do not require Supabase sign-in. Official installation guide: https://supabase.com/docs/guides/local-development/cli/getting-started
+Requirements: Docker Desktop/Engine, Node.js 24, npm and Supabase CLI 2.121.0.
 
 ```sh
-npm ci --ignore-scripts
+npm ci
 npm run local:up
+npm run local:test
+npm run test:e2e
 ```
 
-`npm run dev` is an alias for the same Docker startup.
+`local:up` starts the isolated `playnext-local` Supabase stack, applies pending migrations **locally**, and builds the same Next.js standalone server used for production. Open `http://127.0.0.1:4173`, select **Sign in**, then **Sign in with local test account**. The identity is synthetic (`qa@playnext.test`); credentials are generated privately in ignored `.local/` files. Docker publishes only to loopback. The container uses `host.docker.internal` to reach the host's local Supabase API, while the browser receives the loopback URL.
 
-Open http://127.0.0.1:4173. The **LOCAL ENVIRONMENT** banner identifies synthetic data. Click **Sign in**, then **Sign in with local test account**.
+The local sign-in route is enabled only by `PLAYNEXT_LOCAL_TEST=true`, a loopback Supabase URL and loopback Host/Origin. It always returns 404 on Vercel. Production uses Google SSO.
 
-The `qa@playnext.test` identity is registered in **local Auth**. Its random password is generated automatically and stored in `.local/test-user.json` and `.local/app.env`, which Git ignores. The local frontend receives only its publishable key and this fixture; the CLI admin key stays in process memory. Never send these files to production services.
+The smoke test covers account encryption and revisions, restoration/refresh of a device session, denied anonymous access, shared price cache/quota RPCs and the real Next API route. If `ITAD_API_KEY` is configured in the shell or CI, it additionally requires a genuine ITAD offer for Subnautica. Otherwise it verifies a truthful 503 configuration state. Unit tests cover provider behavior deterministically; browser price fixtures are synthetic and exist only in test interception.
 
-This local adapter uses a password to test sessions, collections, and encryption without a Google test account. Production Google SSO remains in `dist/oauth.js`; the adapter and local button are served only by `local/server.mjs`, outside `dist/`. Local testing does not verify the real Google OAuth consent screen.
-
-## Verify and stop
+Browser tests use installed Google Chrome locally. CI installs the Chromium version pinned by `@playwright/test`. Browser traces are disabled to avoid capturing auth tokens. Screenshots show only the UI and are ignored by Git. Tests restore the synthetic account's prior state after changing it.
 
 ```sh
-npm run local:test
 npm run local:status
 npm run local:down
 ```
 
-`local:test` runs unit tests inside the container, the existing transactional SQL test, and a real flow covering sign-in, three lists, save, revision conflicts, sign-out, and sign-in again. It restores the fixture collection afterward. SQL changes are rolled back. The command rejects non-loopback URLs and does not use remote project credentials.
-
-`local:down` stops only this project's containers and preserves the local volume and account for the next session. Do not run reset commands if you want to keep local data.
-
-## Code and isolation
-
-- `supabase/config.toml`: local-only configuration with no Google/SMTP and no remote project link. Do not run `supabase config push` with this file.
-- `scripts/local.mjs`: starts the stack, creates the identity through local Auth Admin, and generates ignored local files.
-- `local/`: development image and server; the app receives local configuration instead of production configuration.
-- `compose.yaml`: PlayNext container; `.local` files are passed as environment variables and never copied into the image.
-- App and Supabase ports bind to `127.0.0.1`. Supabase CLI 2.121.0 publishes services on all interfaces; `local/loopback.mjs` restricts only this project's `db` and `kong` containers while preserving the volume and gateway configuration in memory. The script checks labels before modifying a container.
-- The image runs as an unprivileged user, with a read-only filesystem and no extra capabilities.
-- The first run downloads official images and requires internet access and disk space. RAWG queries still require your own key when you leave the demo.
-- Store prices (`/api/prices`) work out of the box using the reference demo catalog; if `ITAD_API_KEY` is set in your shell environment before `npm run local:up`, `scripts/local.mjs` forwards it into `.local/app.env` (`0600`, Git-ignored) so the container queries the live IsThereAnyDeal API within the 100 req / 5 min sliding window.
-
+Stopping keeps the local database volume. No local command seeds or resets the production project. Never copy `.local/`, auth traces, `.env` values, or local test credentials into a release or Vercel.
