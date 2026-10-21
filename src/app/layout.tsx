@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./collection-features.css";
 import { PreferencesProvider } from "@/components/preferences";
 export const metadata: Metadata = {
   title: "PlayNext — your next game is here",

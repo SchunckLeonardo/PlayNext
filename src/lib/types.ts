@@ -12,9 +12,11 @@ export interface Game {
   steamAppId?: number;
 }
 export type ChoiceStatus = "yes" | "no" | "played";
+export type CollectionStatus = ChoiceStatus | "completed";
 export interface Choice {
   game: Game;
   status: ChoiceStatus;
+  completed?: true;
   decidedAt: string;
 }
 export interface Filters {

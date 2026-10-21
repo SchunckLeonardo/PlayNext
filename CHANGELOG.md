@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.2.0] — Unreleased
+
+- Add a collection roulette that draws only from Want to play, supports platform and genre filters, avoids consecutive repeats when alternatives exist, and respects reduced motion.
+- Add Completed as a distinct collection state. Preserve the encrypted v1 account contract with an optional completion marker and exclude completed games from future roulette and discovery draws.
+- Let signed-in players publish a 1–5 rating and a written review with an explicit public display name. Add anonymous review reading, permanent share links, clipboard fallback, author editing and deletion.
+- Keep public reviews in a separate table with row-level ownership policies, restricted column permissions, bounded inputs and one review per player/game. Account deletion cascades to public reviews.
+- Add English and Brazilian Portuguese copy, responsive layouts, local database isolation/authorization checks and end-to-end review sharing coverage.
+
 ## [3.1.0] — 2026-10-20
 
 - Repair the store comparison layout with aligned controls, readable offer cards, explicit search actions and responsive empty states.

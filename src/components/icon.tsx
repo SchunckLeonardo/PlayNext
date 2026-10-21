@@ -1,5 +1,23 @@
 import type { ReactNode } from "react";
 const paths: Record<string, ReactNode> = {
+  trophy: (
+    <>
+      <path d="M8 3h8v6a4 4 0 0 1-8 0V3Zm4 10v5m-4 3h8M8 5H4v3a4 4 0 0 0 4 4m8-7h4v3a4 4 0 0 1-4 4M8 18h8v3H8" />
+    </>
+  ),
+  share: (
+    <>
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <path d="m8.6 10.5 6.8-4m-6.8 7 6.8 4" />
+    </>
+  ),
+  pencil: (
+    <>
+      <path d="m15 5 4 4M4 20l5-1L21 7l-4-4L5 15l-1 5Z" />
+    </>
+  ),
   gamepad: (
     <>
       <path d="M6 8h12a4 4 0 0 1 4 4l-1 6a2 2 0 0 1-3.4 1l-3-3H9.4l-3 3A2 2 0 0 1 3 18l-1-6a4 4 0 0 1 4-4Z" />

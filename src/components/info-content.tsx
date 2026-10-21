@@ -12,7 +12,7 @@ export function PrivacyContent() {
       <div className="privacy-copy">
         <p>
           {t(
-            "PlayNext is maintained by SchunckLeonardo. Google authenticates access and links your email to your collection; the RAWG key, choices, and filters help you discover games and manage your collection. We do not ask for your name, national ID, phone number, or address. The app has no ads or analytics.",
+            "PlayNext is maintained by SchunckLeonardo. Google authenticates access and links your email to your collection; the RAWG key, choices, and filters help you discover games and manage your collection. You choose a public display name only when publishing a review. We do not ask for your national ID, phone number, or address. The app has no ads or analytics.",
           )}
         </p>
         <h3>{t("How we protect data")}</h3>
@@ -29,6 +29,12 @@ export function PrivacyContent() {
         <p>
           {t(
             "Vault protects data at rest. The service must decrypt it for you to use the app; authorized project administrators may access it. This is not end-to-end encryption. Choices from older versions may remain in your browser until you import them; the old key is removed automatically without being read.",
+          )}
+        </p>
+        <h3>{t("Public reviews and sharing")}</h3>
+        <p>
+          {t(
+            "Publishing a review shares its game, display name, rating, text and dates publicly, including through a shareable link. Reviews are stored separately from your private Vault document. Your Google email, RAWG key, collection and session tokens are not included. You can edit or delete your own review in game details. Removing a game from your collection does not delete its public review; deleting your PlayNext account removes both. Other people may retain copies they have already shared.",
           )}
         </p>
         <h3>{t("Services involved")}</h3>
@@ -66,7 +72,7 @@ export function PrivacyContent() {
         </p>
         <p>
           {t(
-            "This notice describes implemented controls and is not a certification of compliance with Brazil’s LGPD. Last updated: 2026-10-20.",
+            "This notice describes implemented controls and is not a certification of compliance with Brazil’s LGPD. Last updated: 2026-10-21.",
           )}
         </p>
       </div>

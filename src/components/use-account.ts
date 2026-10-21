@@ -187,6 +187,8 @@ export function useAccount(
   };
   const account = runtime.current?.account;
   return {
+    client: runtime.current?.sdk ?? null,
+    flush: () => runtime.current?.account.flush() ?? Promise.resolve(),
     user: account?.user ?? null,
     busy,
     error,
