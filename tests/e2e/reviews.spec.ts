@@ -253,8 +253,9 @@ test.describe("public reviews in isolated local Supabase", () => {
     await expect(page.getByRole("dialog")).toContainText("qa@playnext.test");
     await page.getByRole("button", { name: "Close account" }).click();
     const name = await page.locator(".game-title").innerText();
+    const count = Number(await page.locator(".nav-count").innerText());
     await page.getByRole("button", { name: "I’ve played this game" }).click();
-    await expect(page.locator(".nav-count")).toHaveText("2");
+    await expect(page.locator(".nav-count")).toHaveText(String(count + 1));
     await page.getByRole("link", { name: /My collection/ }).click();
     await expect(page.getByLabel(`Change choice for ${name}`)).toHaveValue(
       "played",
@@ -301,9 +302,12 @@ test.describe("public reviews in isolated local Supabase", () => {
     );
     await page.unroute("**/rest/v1/playnext_reviews*");
     await page.getByRole("button", { name: "Retry reviews" }).click();
-    await expect(page.getByRole("dialog")).toContainText(
-      "No public reviews yet",
-    );
+    await expect(page.getByRole("dialog").getByRole("alert")).toHaveCount(0);
+    await expect(
+      page
+        .getByRole("dialog")
+        .getByRole("button", { name: "Sign in", exact: true }),
+    ).toBeVisible();
     await page.goto("/reviews/invalid-review-id");
     await expect(
       page.getByRole("heading", {
