@@ -6,6 +6,7 @@ import { LOCAL_PROJECT } from '../local/config.mjs';
 import { DEMO_GAMES } from '../src/lib/demo.ts';
 import { createClient } from '@supabase/supabase-js';
 import { emptyState, persistentAuthOptions } from '../src/lib/account.ts';
+import { testPublicReviews } from './reviews-smoke.mjs';
 import { createSessionStorage, memoryBackend } from '../src/lib/session-store.ts';
 import { computeBotProof, CLIENT_HEADER_NAME, CLIENT_HEADER_VALUE, PROOF_HEADER_NAME } from '../src/lib/prices.ts';
 
@@ -85,6 +86,7 @@ try {
   const html = await (await fetch('http://127.0.0.1:4173/')).text();
   assert.ok(html.includes('LOCAL ENVIRONMENT') && html.includes('Less browsing.') && html.includes('/_next/'));
   console.log('PASS: Next.js runtime, encrypted choices, account revisions, session reload/refresh, shared server-only price cache/quota, bot denial, and truthful ITAD configuration state.');
+  await testPublicReviews(status);
 } finally {
   const restored = await client.rpc('playnext_save', { p_state: original, p_revision: revision });
   assert.equal(restored.error, null, 'Restore the fixture state after the smoke test.');

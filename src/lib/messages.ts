@@ -1,6 +1,104 @@
 import type { Locale } from "./preferences";
 
 export const PORTUGUESE = {
+  Completed: "Zerado",
+  "PlayNext is maintained by SchunckLeonardo. Google authenticates access and links your email to your collection; the RAWG key, choices, and filters help you discover games and manage your collection. You choose a public display name only when publishing a review. We do not ask for your national ID, phone number, or address. The app has no ads or analytics.":
+    "O PlayNext é mantido por SchunckLeonardo. O Google autentica o acesso e vincula seu e-mail à coleção; a chave RAWG, as escolhas e os filtros ajudam a descobrir jogos e organizar sua coleção. Você escolhe um nome público apenas ao publicar uma avaliação. Não pedimos CPF, telefone ou endereço. O aplicativo não tem anúncios nem ferramentas de análise de acesso.",
+  "Public reviews and sharing": "Avaliações públicas e compartilhamento",
+  "Publishing a review shares its game, display name, rating, text and dates publicly, including through a shareable link. Reviews are stored separately from your private Vault document. Your Google email, RAWG key, collection and session tokens are not included. You can edit or delete your own review in game details. Removing a game from your collection does not delete its public review; deleting your PlayNext account removes both. Other people may retain copies they have already shared.":
+    "Ao publicar uma avaliação, o jogo, nome de exibição, nota, texto e datas ficam públicos, inclusive por um link compartilhável. As avaliações são armazenadas separadamente do documento privado no Vault. Seu e-mail Google, chave RAWG, coleção e tokens de sessão não são incluídos. Você pode editar ou excluir sua avaliação nos detalhes do jogo. Remover um jogo da coleção não exclui sua avaliação pública; excluir sua conta PlayNext remove ambos. Outras pessoas podem manter cópias que já tenham compartilhado.",
+  "This notice describes implemented controls and is not a certification of compliance with Brazil’s LGPD. Last updated: 2026-10-21.":
+    "Este aviso descreve os controles implementados e não certifica conformidade com a LGPD. Última atualização: 21/10/2026.",
+  "1 game ready to play": "1 jogo para sortear",
+  "LET YOUR COLLECTION DECIDE": "DEIXE SUA COLEÇÃO ESCOLHER",
+  "What are we playing today?": "O que vamos jogar hoje?",
+  "Spin only the games you want to play. Your choices stay unchanged.":
+    "Sorteie entre os jogos que você quer jogar. Suas escolhas continuam salvas.",
+  "Roulette platform": "Plataforma da roleta",
+  "Roulette genre": "Gênero da roleta",
+  "Choosing…": "Sorteando…",
+  "Spin again": "Sortear novamente",
+  "Spin my collection": "Girar a roleta",
+  "{count} games ready to play": "{count} jogos para sortear",
+  "TONIGHT’S PICK": "SEU PRÓXIMO JOGO",
+  "Your next adventure is in your collection.":
+    "Sua próxima aventura está na sua coleção.",
+  "Choose filters, then spin. No matches? Try another platform or genre.":
+    "Escolha os filtros e gire a roleta. Nenhum jogo? Experimente outra plataforma ou gênero.",
+  "Mark games as Want to play in Discover to start the roulette.":
+    "Marque jogos como Quero jogar em Descobrir para começar a roleta.",
+  "Choosing a game from your collection.": "Sorteando um jogo da sua coleção.",
+  "Tonight’s pick: {name}": "Seu próximo jogo: {name}",
+  "Review {name}": "Avaliar {name}",
+  "Review this game": "Avaliar este jogo",
+  "My choice": "Minha escolha",
+  "Mark as completed": "Marcar como zerado",
+  "Game information": "Informações do jogo",
+  "Game details": "Sobre o jogo",
+  "Player reviews": "Avaliações dos jogadores",
+  "Open public review": "Abrir avaliação pública",
+  "Link copied": "Link copiado",
+  "Copy review link": "Copiar link da avaliação",
+  "Public review link": "Link público da avaliação",
+  "Review by {name}": "Avaliação de {name}",
+  "Rated {rating} out of 5": "Nota {rating} de 5",
+  "THE PLAYER’S PERSPECTIVE": "A EXPERIÊNCIA DE QUEM JOGOU",
+  "Reviews, ratings and display names are public. Anyone with the link can read them.":
+    "Avaliações, notas e nomes de exibição são públicos. Qualquer pessoa com o link pode ler.",
+  "Loading reviews…": "Carregando avaliações…",
+  "Retry reviews": "Tentar novamente",
+  "Edit your review": "Editar sua avaliação",
+  "Write a public review": "Escrever uma avaliação pública",
+  "Public display name": "Nome público de exibição",
+  "Enter a public display name.": "Informe um nome público de exibição.",
+  "Choose a name you want everyone to see. Your email stays private.":
+    "Escolha o nome que todos vão ver. Seu e-mail continua privado.",
+  "Your rating": "Sua nota",
+  "Choose a rating": "Escolha uma nota",
+  "{rating} out of 5": "{rating} de 5",
+  "Your review": "Sua avaliação",
+  "Write your review before publishing.":
+    "Escreva sua avaliação antes de publicar.",
+  "Publishing makes your review, rating and display name visible to everyone.":
+    "Ao publicar, sua avaliação, nota e nome de exibição ficarão visíveis para todos.",
+  "Publishing…": "Publicando…",
+  "Save public changes": "Salvar alterações públicas",
+  "Publish review": "Publicar avaliação",
+  "Delete review": "Excluir avaliação",
+  "Delete this public review? Its shared link will stop working.":
+    "Excluir esta avaliação pública? O link compartilhado deixará de funcionar.",
+  "Mark this game as Played or Completed in your collection to write a review.":
+    "Marque este jogo como Já joguei ou Zerado na sua coleção para escrever uma avaliação.",
+  "Sign in with Google to publish a review of a game you have played.":
+    "Entre com o Google para publicar uma avaliação de um jogo que você já jogou.",
+  "No public reviews yet. Be the first to share your experience.":
+    "Nenhuma avaliação pública ainda. Seja o primeiro a compartilhar sua experiência.",
+  "Load more reviews": "Carregar mais avaliações",
+  "A PLAYER’S REVIEW": "AVALIAÇÃO DE UM JOGADOR",
+  "Shared on PlayNext": "Compartilhada no PlayNext",
+  "This is a public player review. Your collection and RAWG key are not shared.":
+    "Esta é uma avaliação pública de um jogador. Sua coleção e sua chave RAWG não são compartilhadas.",
+  "This review is no longer available.":
+    "Esta avaliação não está mais disponível.",
+  "The link may be incorrect or the author may have deleted the review.":
+    "O link pode estar incorreto ou o autor pode ter excluído a avaliação.",
+  "Public reviews are not configured on this server.":
+    "As avaliações públicas não estão configuradas neste servidor.",
+  "Public reviews are temporarily unavailable. Please try again.":
+    "As avaliações públicas estão temporariamente indisponíveis. Tente novamente.",
+  "Could not load your review. Please try again.":
+    "Não foi possível carregar sua avaliação. Tente novamente.",
+  "Add a public name, a rating from 1 to 5, and a review of up to 3,000 characters.":
+    "Informe um nome público, uma nota de 1 a 5 e uma avaliação de até 3.000 caracteres.",
+  "You already reviewed this game. Reload the reviews to edit it.":
+    "Você já avaliou este jogo. Recarregue as avaliações para editar a sua.",
+  "Could not publish your review. Your draft is still here.":
+    "Não foi possível publicar sua avaliação. Seu texto continua aqui.",
+  "Could not delete your review. Please try again.":
+    "Não foi possível excluir sua avaliação. Tente novamente.",
+  "Your review is public. Share its link with anyone.":
+    "Sua avaliação está pública. Compartilhe o link com quem quiser.",
+  "Public review deleted.": "Avaliação pública excluída.",
   "Skip to content": "Pular para o conteúdo",
   "LOCAL ENVIRONMENT · isolated synthetic test account":
     "AMBIENTE LOCAL · conta sintética de teste isolada",

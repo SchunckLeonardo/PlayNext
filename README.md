@@ -6,6 +6,18 @@ Choose English or Brazilian Portuguese in the header. Open game details to choos
 
 PlayNext 3 uses **Next.js App Router, React and strict TypeScript**. The site and `GET /api/prices` run together on Vercel. Google sign-in and encrypted collections continue to use the existing Supabase project and v1 account document; this migration does not reset users or collections.
 
+## Collection roulette and public reviews
+
+In **My collection**, spin the roulette to choose from **Want to play**. Its platform and genre filters do not change discovery filters or saved choices. A second spin avoids the previous winner when another eligible game exists. Empty and one-game collections are supported; reduced-motion mode skips the animation.
+
+Change a collection game's status to **Completed**, or use **Mark as completed** in its details. Completed is distinct from Played in the interface and remains a played entry with an optional `completed: true` marker in the encrypted v1 document. Existing accounts need no private-data migration.
+
+Open **Player reviews** in game details. A signed-in player can publish a 1–5 rating and up to 3,000 characters for a game marked Played or Completed. The author chooses a public display name; the UI does not publish the Google email. Reviews can be edited or deleted by their author. **Copy review link** shares `/reviews/<uuid>`, which anyone can read without Google sign-in or a RAWG key. If clipboard access is blocked, the link is displayed for manual copying.
+
+Public reviews intentionally live outside the private Vault document. Only public review fields are returned on share pages. Anonymous readers cannot select account IDs; authenticated writers are restricted by owner RLS and column permissions. Removing a game from a collection keeps its public review; deleting the PlayNext account also deletes its reviews. Public review text is rendered as plain text, never HTML.
+
+Before enabling this feature in a deployment, review and apply `supabase/migrations/20261021140141_public_reviews.sql` to the intended Supabase project. It creates the review table, indexes, input constraints, timestamp trigger and least-privilege policies/grants; it does not modify existing account documents or pricing tables. The preview cannot publish reviews until its database has this migration. Apply it through the approved deployment process, then publish the tested application commit. No new environment variables are required.
+
 ## Development
 
 Use Node.js 24 and npm:

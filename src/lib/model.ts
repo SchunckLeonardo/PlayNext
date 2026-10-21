@@ -1,4 +1,4 @@
-import type { Choice, ChoiceStatus, Game } from "./types";
+import type { Choice, CollectionStatus, Game } from "./types";
 import { record } from "./types";
 export const PLATFORMS = [
   { slug: "pc", label: "PC", family: "PC" },
@@ -37,7 +37,40 @@ export const STATUSES = {
   yes: { label: "Want to play", icon: "heart", color: "green" },
   no: { label: "Not interested", icon: "x", color: "red" },
   played: { label: "Played", icon: "check", color: "blue" },
+  completed: { label: "Completed", icon: "trophy", color: "orange" },
 };
+export function choiceStatus(choice: Choice): CollectionStatus {
+  return choice.status === "played" && choice.completed
+    ? "completed"
+    : choice.status;
+}
+export function rouletteCandidates(
+  history: Choice[],
+  platforms: string[] = [],
+  genre = "",
+): Game[] {
+  const ids = new Set<number>();
+  return history
+    .filter(
+      (entry) =>
+        entry.status === "yes" &&
+        matchesFilters(entry.game, platforms, genre) &&
+        !ids.has(entry.game.id) &&
+        ids.add(entry.game.id),
+    )
+    .map((entry) => entry.game);
+}
+export function pickCollectionGame(
+  games: Game[],
+  previousId?: number,
+  random = Math.random,
+): Game | null {
+  const candidates =
+    games.length > 1 ? games.filter((game) => game.id !== previousId) : games;
+  return candidates.length
+    ? candidates[Math.floor(random() * candidates.length)]
+    : null;
+}
 export const HISTORY_KEY = "playnext.history.v1";
 export const FILTERS_KEY = "playnext.filters.v1";
 export const API_KEY = "playnext.rawg.session";
@@ -71,12 +104,17 @@ export function unseenGames(games: Game[], history: Choice[]) {
 export function decide(
   history: Choice[],
   game: Game,
-  status: ChoiceStatus,
+  status: CollectionStatus,
   now = new Date().toISOString(),
 ): Choice[] {
-  if (!STATUSES[status]) throw new Error("Invalid choice.");
+  if (!Object.hasOwn(STATUSES, status)) throw new Error("Invalid choice.");
   return [
-    { game, status, decidedAt: now },
+    {
+      game,
+      status: status === "completed" ? "played" : status,
+      ...(status === "completed" ? { completed: true as const } : {}),
+      decidedAt: now,
+    },
     ...history.filter((entry) => entry.game.id !== game.id),
   ];
 }
@@ -89,7 +127,7 @@ export function readHistory(storage: Pick<Storage, "getItem">): Choice[] {
         g = record(e.game);
       return (
         typeof e.status === "string" &&
-        e.status in STATUSES &&
+        ["yes", "no", "played"].includes(e.status) &&
         Number.isSafeInteger(g.id) &&
         typeof g.name === "string" &&
         typeof g.slug === "string" &&

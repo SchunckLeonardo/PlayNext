@@ -61,6 +61,9 @@ export function cleanState(input: unknown) {
     getItem: () => JSON.stringify(value.history),
   }).map((entry) => ({
     status: entry.status,
+    ...(entry.status === "played" && entry.completed === true
+      ? { completed: true as const }
+      : {}),
     decidedAt: typeof entry.decidedAt === "string" ? entry.decidedAt : "",
     game: {
       ...entry.game,

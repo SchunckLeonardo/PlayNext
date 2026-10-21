@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   AccountState,
   ChoiceStatus,
+  CollectionStatus,
   ClientConfig,
   Filters,
   Game,
@@ -17,7 +18,7 @@ import {
   matchesFilters,
   unseenGames,
   decide,
-  safeImage,
+  choiceStatus,
 } from "@/lib/model";
 import { emptyState } from "@/lib/account";
 import { RawgClient } from "@/lib/api";
@@ -28,6 +29,9 @@ import { StorePrices } from "./store-prices";
 import { AccountPanel } from "./account-panel";
 import { PrivacyContent, TutorialContent } from "./info-content";
 import { useAccount } from "./use-account";
+import { Artwork } from "./artwork";
+import { CollectionRoulette } from "./collection-roulette";
+import { PublicReviews } from "./public-reviews";
 
 interface Catalog {
   client: RawgClient;
@@ -40,35 +44,12 @@ const keyChoices: Record<string, ChoiceStatus | undefined> = {
   ArrowDown: "played",
   ArrowRight: "yes",
 };
-const statusKeys: ChoiceStatus[] = ["yes", "played", "no"];
+const statusKeys: CollectionStatus[] = ["yes", "played", "completed", "no"];
 const platformNames = (game: Game) =>
   game.platforms
     .map((slug) => PLATFORMS.find((p) => p.slug === slug)?.label)
     .filter(Boolean)
     .join(" · ");
-function Artwork({
-  game,
-  className = "",
-  eager = false,
-}: {
-  game: Game;
-  className?: string;
-  eager?: boolean;
-}) {
-  const { t } = usePreferences();
-  return safeImage(game.image) ? (
-    <img
-      className={className}
-      src={safeImage(game.image)}
-      alt={t("Artwork for {name}", { name: game.name })}
-      loading={eager ? "eager" : "lazy"}
-      draggable={false}
-      onError={(e) => {
-        e.currentTarget.style.visibility = "hidden";
-      }}
-    />
-  ) : null;
-}
 export function PlayNext({ config }: { config: ClientConfig }) {
   const { locale, t, text } = usePreferences();
   const [state, setState] = useState<AccountState>(emptyState),
@@ -82,10 +63,11 @@ export function PlayNext({ config }: { config: ClientConfig }) {
     [connectError, setConnectError] = useState("");
   const [modal, setModal] = useState<Modal>(null),
     [details, setDetails] = useState<Game | null>(null);
+  const [detailsTab, setDetailsTab] = useState<"game" | "reviews">("game");
   const [view, setView] = useState<"discover" | "collection">("discover"),
-    [collectionStatus, setCollectionStatus] = useState<ChoiceStatus | "all">(
-      "all",
-    ),
+    [collectionStatus, setCollectionStatus] = useState<
+      CollectionStatus | "all"
+    >("all"),
     [search, setSearch] = useState("");
   const [rawgInput, setRawgInput] = useState(""),
     [showKey, setShowKey] = useState(false);
@@ -133,6 +115,17 @@ export function PlayNext({ config }: { config: ClientConfig }) {
     setState(next);
     void account.save(next);
   };
+  const openDetails = (selected: Game, tab: "game" | "reviews" = "game") => {
+    setDetailsTab(tab);
+    setDetails(selected);
+  };
+  const changeChoice = (selected: Game, status: CollectionStatus) => {
+    setUndoState(null);
+    persist({
+      ...stateRef.current,
+      history: decide(stateRef.current.history, selected, status),
+    });
+  };
   const closeModal = () => {
     if (modal === "api") {
       connectionController.current?.abort();
@@ -148,7 +141,7 @@ export function PlayNext({ config }: { config: ClientConfig }) {
   };
   const navigate = (
     next: "discover" | "collection",
-    status: ChoiceStatus | "all" = "all",
+    status: CollectionStatus | "all" = "all",
   ) => {
     setView(next);
     setCollectionStatus(status);
@@ -365,9 +358,13 @@ export function PlayNext({ config }: { config: ClientConfig }) {
     : "Guest: choices stay in this tab only.";
   const collection = state.history.filter(
     (entry) =>
-      (collectionStatus === "all" || entry.status === collectionStatus) &&
+      (collectionStatus === "all" ||
+        choiceStatus(entry) === collectionStatus) &&
       entry.game.name.toLowerCase().includes(search.toLowerCase()),
   );
+  const detailsChoice = details
+    ? state.history.find((entry) => entry.game.id === details.id)
+    : undefined;
   return (
     <>
       <a className="skip-link" href="#main">
@@ -700,7 +697,7 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                           </div>
                           <button
                             className="details-link"
-                            onClick={() => setDetails(game)}
+                            onClick={() => openDetails(game)}
                           >
                             {t("View details")} <Icon name="external" />
                           </button>
@@ -825,7 +822,8 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                     <span>{text(STATUSES[status].label)}</span>
                     <strong>
                       {String(
-                        state.history.filter((e) => e.status === status).length,
+                        state.history.filter((e) => choiceStatus(e) === status)
+                          .length,
                       ).padStart(2, "0")}
                     </strong>
                     <Icon name="chevron" />
@@ -842,14 +840,14 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                     <button
                       className="recent-item"
                       key={entry.game.id}
-                      onClick={() => setDetails(entry.game)}
+                      onClick={() => openDetails(entry.game)}
                     >
                       <Artwork game={entry.game} />
                       <div>
                         <h4>{entry.game.name}</h4>
-                        <p className={STATUSES[entry.status].color}>
-                          <Icon name={STATUSES[entry.status].icon} />
-                          {text(STATUSES[entry.status].label)}
+                        <p className={STATUSES[choiceStatus(entry)].color}>
+                          <Icon name={STATUSES[choiceStatus(entry)].icon} />
+                          {text(STATUSES[choiceStatus(entry)].label)}
                         </p>
                       </div>
                     </button>
@@ -905,6 +903,11 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                 {t("Discover games")} <Icon name="arrow" />
               </button>
             </div>
+            <CollectionRoulette
+              key={account.user?.id || "guest"}
+              history={state.history}
+              onDetails={openDetails}
+            />
             <div className="collection-toolbar">
               <div
                 className="collection-tabs"
@@ -923,7 +926,7 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                     <span>
                       {
                         state.history.filter(
-                          (e) => status === "all" || e.status === status,
+                          (e) => status === "all" || choiceStatus(e) === status,
                         ).length
                       }
                     </span>
@@ -946,7 +949,7 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                   <article className="collection-card" key={entry.game.id}>
                     <button
                       className="collection-cover"
-                      onClick={() => setDetails(entry.game)}
+                      onClick={() => openDetails(entry.game)}
                       aria-label={t("View details for {name}", {
                         name: entry.game.name,
                       })}
@@ -958,6 +961,12 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                       <p className="collection-platforms">
                         {platformNames(entry.game)}
                       </p>
+                      <span
+                        className={`collection-status ${STATUSES[choiceStatus(entry)].color}`}
+                      >
+                        <Icon name={STATUSES[choiceStatus(entry)].icon} />
+                        {text(STATUSES[choiceStatus(entry)].label)}
+                      </span>
                       <div className="collection-card-controls">
                         <label
                           className="sr-only"
@@ -969,18 +978,13 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                         </label>
                         <select
                           id={`status-${entry.game.id}`}
-                          value={entry.status}
-                          onChange={(e) => {
-                            setUndoState(null);
-                            persist({
-                              ...stateRef.current,
-                              history: decide(
-                                stateRef.current.history,
-                                entry.game,
-                                e.target.value as ChoiceStatus,
-                              ),
-                            });
-                          }}
+                          value={choiceStatus(entry)}
+                          onChange={(e) =>
+                            changeChoice(
+                              entry.game,
+                              e.target.value as CollectionStatus,
+                            )
+                          }
                         >
                           {statusKeys.map((s) => (
                             <option key={s} value={s}>
@@ -1009,6 +1013,18 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                           <Icon name="trash" />
                         </button>
                       </div>
+                      {entry.status === "played" && (
+                        <button
+                          className="button collection-review-button"
+                          onClick={() => openDetails(entry.game, "reviews")}
+                          aria-label={t("Review {name}", {
+                            name: entry.game.name,
+                          })}
+                        >
+                          <Icon name="pencil" />
+                          {t("Review this game")}
+                        </button>
+                      )}
                     </div>
                   </article>
                 ))
@@ -1206,33 +1222,98 @@ export function PlayNext({ config }: { config: ClientConfig }) {
                 <span>Metacritic: {details.metacritic}</span>
               )}
             </div>
-            <section
-              className="details-stores"
-              aria-label={t("PC store prices")}
-            >
-              <StorePrices
-                game={details}
-                rawg={catalog?.client || null}
-                detailed
-              />
-            </section>
-            <p className="details-description">
-              {text(details.description) ||
-                t("No description is available for this game.")}
-            </p>
-            {catalog && details.description && (
-              <p className="details-source">
-                {t("Description supplied by RAWG in its original language.")}
-              </p>
+            {detailsChoice && (
+              <div className="details-choice">
+                <label htmlFor="details-choice">
+                  {t("My choice")}
+                  <select
+                    id="details-choice"
+                    value={choiceStatus(detailsChoice)}
+                    onChange={(event) =>
+                      changeChoice(
+                        details,
+                        event.target.value as CollectionStatus,
+                      )
+                    }
+                  >
+                    {statusKeys.map((status) => (
+                      <option key={status} value={status}>
+                        {text(STATUSES[status].label)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {detailsChoice.status === "yes" && (
+                  <button
+                    className="button"
+                    onClick={() => changeChoice(details, "completed")}
+                  >
+                    <Icon name="trophy" />
+                    {t("Mark as completed")}
+                  </button>
+                )}
+              </div>
             )}
-            <a
-              className="button primary-button"
-              href={`https://rawg.io/games/${encodeURIComponent(details.slug)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {t("View on RAWG")} <Icon name="external" />
-            </a>
+            <div className="details-tabs" aria-label={t("Game information")}>
+              <button
+                aria-pressed={detailsTab === "game"}
+                onClick={() => setDetailsTab("game")}
+              >
+                {t("Game details")}
+              </button>
+              <button
+                aria-pressed={detailsTab === "reviews"}
+                onClick={() => setDetailsTab("reviews")}
+              >
+                {t("Player reviews")}
+              </button>
+            </div>
+            {detailsTab === "reviews" ? (
+              <PublicReviews
+                key={`${details.id}:${account.user?.id || "guest"}`}
+                game={details}
+                client={account.client}
+                user={account.user}
+                played={detailsChoice?.status === "played"}
+                beforePublish={account.flush}
+                onSignIn={() => {
+                  setDetails(null);
+                  openAccount();
+                }}
+              />
+            ) : (
+              <>
+                <section
+                  className="details-stores"
+                  aria-label={t("PC store prices")}
+                >
+                  <StorePrices
+                    game={details}
+                    rawg={catalog?.client || null}
+                    detailed
+                  />
+                </section>
+                <p className="details-description">
+                  {text(details.description) ||
+                    t("No description is available for this game.")}
+                </p>
+                {catalog && details.description && (
+                  <p className="details-source">
+                    {t(
+                      "Description supplied by RAWG in its original language.",
+                    )}
+                  </p>
+                )}
+                <a
+                  className="button primary-button"
+                  href={`https://rawg.io/games/${encodeURIComponent(details.slug)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {t("View on RAWG")} <Icon name="external" />
+                </a>
+              </>
+            )}
           </div>
         </Dialog>
       )}
